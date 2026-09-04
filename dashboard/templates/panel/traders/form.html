@@ -1,0 +1,211 @@
+{% extends "panel/base.html" %}
+{% load dict_extras %}
+{% block title %}{{ action }} Trader — HagoCapitals Admin{% endblock %}
+{% block heading %}{{ action }} Trader{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#B0D45A;">Traders</a> / {% if obj %}<a href="{% url 'panel:trader_detail' obj.pk %}" style="color:#B0D45A;">{{ obj.name }}</a> / {% endif %}{{ action }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <div class="panel-card p-6">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        {% for err in form.non_field_errors %}<div class="flash-msg flash-error mb-4">{{ err }}</div>{% endfor %}
+      {% endif %}
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b" style="color:#8fa896; border-color:#1e3827;">Identity</h3>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="mb-4 col-span-2 md:col-span-1">
+          <label class="form-label">Name *</label>
+          <input type="text" name="name" value="{{ form.name.value|default:'' }}" class="form-control" required />
+        </div>
+        <div class="mb-4 col-span-2 md:col-span-1">
+          <label class="form-label">Specialty</label>
+          <input type="text" name="specialty" value="{{ form.specialty.value|default:'' }}" class="form-control" placeholder="e.g. Crypto Day Trader" />
+        </div>
+        <div class="mb-4 col-span-2">
+          <label class="form-label">Bio</label>
+          <textarea name="bio" class="form-control" rows="3" placeholder="Short trader biography…">{{ form.bio.value|default:'' }}</textarea>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Avatar Image</label>
+          <input type="file" name="avatar" class="form-control" accept="image/*" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Avatar Color (fallback)</label>
+          <input type="color" name="avatar_color" value="{{ form.avatar_color.value|default:'#4a7a6a' }}" class="form-control" style="height:42px; padding:4px;" />
+        </div>
+      </div>
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Performance</h3>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="mb-4"><label class="form-label">ROI (%)</label><input type="number" name="roi" value="{{ form.roi.value|default:'0' }}" class="form-control" step="0.01" /></div>
+        <div class="mb-4"><label class="form-label">Win Rate (%)</label><input type="number" name="win_rate" value="{{ form.win_rate.value|default:'0' }}" class="form-control" step="0.01" /></div>
+        <div class="mb-4"><label class="form-label">Copiers Count</label><input type="number" name="copiers_count" value="{{ form.copiers_count.value|default:'0' }}" class="form-control" /></div>
+        <div class="mb-4"><label class="form-label">Followers</label><input type="number" name="followers_count" value="{{ form.followers_count.value|default:'0' }}" class="form-control" /></div>
+        <div class="mb-4"><label class="form-label">Trading Days</label><input type="number" name="trading_days" value="{{ form.trading_days.value|default:'0' }}" class="form-control" /></div>
+        <div class="mb-4"><label class="form-label">Min Capital ($)</label><input type="number" name="min_capital" value="{{ form.min_capital.value|default:'0' }}" class="form-control" step="0.01" /></div>
+      </div>
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Detail Stats</h3>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="mb-4"><label class="form-label">Master PnL ($)</label><input type="number" name="master_pnl" value="{{ form.master_pnl.value|default:'0' }}" class="form-control" step="0.01" /></div>
+        <div class="mb-4"><label class="form-label">Account Assets ($)</label><input type="number" name="account_assets" value="{{ form.account_assets.value|default:'0' }}" class="form-control" step="0.01" /></div>
+        <div class="mb-4"><label class="form-label">Max Drawdown (%)</label><input type="number" name="max_drawdown" value="{{ form.max_drawdown.value|default:'0' }}" class="form-control" step="0.01" /></div>
+        <div class="mb-4"><label class="form-label">Cum. Earnings ($)</label><input type="number" name="cum_earnings" value="{{ form.cum_earnings.value|default:'0' }}" class="form-control" step="0.01" /></div>
+        <div class="mb-4"><label class="form-label">Cum. Copiers</label><input type="number" name="cum_copiers" value="{{ form.cum_copiers.value|default:'0' }}" class="form-control" /></div>
+        <div class="mb-4"><label class="form-label">Profit Share (%)</label><input type="number" name="profit_share" value="{{ form.profit_share.value|default:'0' }}" class="form-control" step="0.01" /></div>
+      </div>
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Categorisation</h3>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="mb-4">
+          <label class="form-label">Risk Level</label>
+          <select name="risk_level" class="form-control">
+            <option value="">— Select —</option>
+            {% for val, label in form.fields.risk_level.choices %}
+              <option value="{{ val }}" {% if form.risk_level.value == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Market Category</label>
+          <select name="market_category" class="form-control">
+            <option value="">— Select —</option>
+            {% for val, label in form.fields.market_category.choices %}
+              <option value="{{ val }}" {% if form.market_category.value == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-1 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Portfolio Allocation</h3>
+      <p class="text-xs mb-3" style="color:#8fa896;">
+        {% if obj %}
+          Adjust percentages, add rows, or tick "Remove" to delete one — saved together with the rest of this form.
+        {% else %}
+          Optional — set this trader's allocation breakdown now, or leave every row blank and add it later from the trader's page.
+        {% endif %}
+        Use "+ Add Allocation Row" below for as many as you need.
+      </p>
+      <div class="mb-6 p-4 rounded-lg" style="background:#0d2016; border:1px solid #1e3827;">
+        {{ allocation_fs.management_form }}
+        {% if allocation_fs.non_form_errors %}
+          <div class="flash-msg flash-error mb-3">{{ allocation_fs.non_form_errors }}</div>
+        {% endif %}
+        <div id="alloc-rows">
+          {% for alloc_form in allocation_fs %}
+            <div class="alloc-row grid grid-cols-12 gap-2 items-end mb-3 pb-3" style="border-bottom:1px solid #1e3827;">
+              {{ alloc_form.id }}
+              <div class="col-span-4">
+                <label class="form-label">Label</label>
+                {{ alloc_form.label }}
+                {% for err in alloc_form.label.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ err }}</p>{% endfor %}
+              </div>
+              <div class="col-span-3 md:col-span-2">
+                <label class="form-label">Percent</label>
+                {{ alloc_form.pct }}
+                {% for err in alloc_form.pct.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ err }}</p>{% endfor %}
+              </div>
+              <div class="col-span-2">
+                <label class="form-label">Color</label>
+                {{ alloc_form.color }}
+              </div>
+              <div class="col-span-2">
+                <label class="form-label">Order</label>
+                {{ alloc_form.order }}
+              </div>
+              <div class="col-span-1 md:col-span-2 flex justify-end" style="padding-bottom:10px;">
+                {% if alloc_form.instance.pk %}
+                <label class="flex items-center gap-1 cursor-pointer" title="Remove this allocation">
+                  {{ alloc_form.DELETE }}
+                  <span class="text-xs" style="color:#f87171;">Del</span>
+                </label>
+                {% else %}
+                <button type="button" class="alloc-remove-row text-xs" style="color:#f87171; background:none; border:none; cursor:pointer;" title="Remove this row">✕ Remove</button>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <button type="button" id="alloc-add-row" class="btn btn-ghost" style="padding:6px 14px; font-size:12px;">+ Add Allocation Row</button>
+      </div>
+
+      <template id="alloc-empty-form-template">
+        <div class="alloc-row grid grid-cols-12 gap-2 items-end mb-3 pb-3" style="border-bottom:1px solid #1e3827;">
+          {{ allocation_fs.empty_form.id }}
+          <div class="col-span-4">
+            <label class="form-label">Label</label>
+            {{ allocation_fs.empty_form.label }}
+          </div>
+          <div class="col-span-3 md:col-span-2">
+            <label class="form-label">Percent</label>
+            {{ allocation_fs.empty_form.pct }}
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Color</label>
+            {{ allocation_fs.empty_form.color }}
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Order</label>
+            {{ allocation_fs.empty_form.order }}
+          </div>
+          <div class="col-span-1 md:col-span-2 flex justify-end" style="padding-bottom:10px;">
+            <button type="button" class="alloc-remove-row text-xs" style="color:#f87171; background:none; border:none; cursor:pointer;" title="Remove this row">✕ Remove</button>
+          </div>
+        </div>
+      </template>
+      <script>
+      (function() {
+        var addBtn   = document.getElementById('alloc-add-row');
+        var rows     = document.getElementById('alloc-rows');
+        var template = document.getElementById('alloc-empty-form-template');
+        var totalForms = document.querySelector('input[name="alloc-TOTAL_FORMS"]');
+        if (!addBtn || !rows || !template || !totalForms) return;
+
+        function bindRemove(row) {
+          var btn = row.querySelector('.alloc-remove-row');
+          if (btn) btn.addEventListener('click', function() { row.remove(); });
+        }
+        rows.querySelectorAll('.alloc-row').forEach(bindRemove);
+
+        addBtn.addEventListener('click', function() {
+          var idx  = parseInt(totalForms.value, 10);
+          var html = template.innerHTML.split('__prefix__').join(idx);
+          var wrap = document.createElement('div');
+          wrap.innerHTML = html.trim();
+          var row = wrap.firstElementChild;
+          rows.appendChild(row);
+          bindRemove(row);
+          totalForms.value = idx + 1;
+        });
+      })();
+      </script>
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-3 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Tags</h3>
+      <div class="flex flex-wrap gap-3 mb-6 p-4 rounded-lg" style="background:#0d2016; border:1px solid #1e3827;">
+        {% for val, label in form.trader_tags.field.choices %}
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="trader_tags" value="{{ val }}"
+            {% if val|str_in:form.trader_tags.value %}checked{% endif %}
+            style="accent-color:#B0D45A;" />
+          <span class="text-sm" style="color:#f0f0f0;">{{ label }}</span>
+        </label>
+        {% endfor %}
+        {% if not form.trader_tags.field.choices %}
+          <p class="text-xs" style="color:#8fa896;">No tags available. <a href="{% url 'panel:tag_create' %}" style="color:#B0D45A;">Create one</a></p>
+        {% endif %}
+      </div>
+
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">{{ action }} Trader</button>
+        {% if obj %}
+          <a href="{% url 'panel:trader_detail' obj.pk %}" class="btn btn-ghost">Cancel</a>
+        {% else %}
+          <a href="{% url 'panel:trader_list' %}" class="btn btn-ghost">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

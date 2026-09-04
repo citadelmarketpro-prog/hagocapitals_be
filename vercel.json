@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "hagocapitals/wsgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb",
+        "runtime": "python3.9"
+      }
+    }
+  ],
+  "buildCommand": "bash build.sh",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "hagocapitals/wsgi.py"
+    }
+  ],
+  "env": {
+    "DJANGO_SETTINGS_MODULE": "hagocapitals.settings",
+    "PYTHONUNBUFFERED": "1"
+  }
+}
