@@ -419,9 +419,8 @@ def _footer_html(user_email: str, social_links: dict | None = None) -> str:
         </div>
         {social_html}
         <div class="footer-links">
-            <a href="{frontend}/privacy">Privacy Policy</a>
+            <a href="{frontend}/privacy-policy">Privacy Policy</a>
             <a href="{frontend}/terms">Terms of Service</a>
-            <a href="{frontend}/support">Support</a>
         </div>
         <div class="footer-text" style="margin-top:14px;">
             Sent to {user_email} &middot; &copy; {year} HagoCapitals. All rights reserved.
@@ -642,7 +641,7 @@ def send_password_changed_email(user) -> bool:
         </div>
         <div class="notice">
             <p><strong>Wasn't you?</strong> If you did not make this change, please
-            <a href="{frontend}/support" style="color:#B0D45A;">contact support</a>
+            <a href="mailto:support@HagoCapitals.com" style="color:#B0D45A;">contact support</a>
             immediately to secure your account.</p>
         </div>
         <div class="divider"></div>
