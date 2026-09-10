@@ -1,4 +1,5 @@
 import types as _types
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
@@ -15,6 +16,8 @@ from rest_framework_simplejwt.exceptions import TokenError
 from .authentication import CookieJWTAuthentication
 from .email_service import (
     send_admin_deposit_notification,
+    send_admin_payment_intent_notification,
+    send_admin_withdrawal_intent_notification,
     send_admin_withdrawal_notification,
     send_password_changed_email,
     send_password_reset_email,
@@ -25,12 +28,8 @@ from .models import (
     AdminWallet,
     CopyRelationship,
     CopyTrade,
-    DummyCopier,
     Notification,
     Trader,
-    TradeHistory,
-    TraderPosition,
-    TraderSection,
     Transaction,
     SavedPaymentMethod,
 )
@@ -38,8 +37,6 @@ from .serializers import (
     AdminWalletSerializer,
     ChangePasswordSerializer,
     CopyingTraderSerializer,
-    CopyRelationshipSerializer,
-    DummyCopierSerializer,
     CopyTradeSerializer,
     DepositSerializer,
     ForgotPasswordSerializer,
@@ -49,9 +46,7 @@ from .serializers import (
     RegisterSerializer,
     ResetPasswordSerializer,
     SavedPaymentMethodSerializer,
-    TradeHistorySerializer,
     TraderDetailSerializer,
-    TraderPositionSerializer,
     TraderSerializer,
     TransactionSerializer,
     UpdateProfileSerializer,
@@ -516,6 +511,46 @@ class DashboardStatsView(APIView):
             "total_invested": float(total_invested),
             "today_pnl":      float(today_pnl),
             "today_pnl_pct":  round(today_pnl_pct, 2),
+            "portfolio_target":         float(user.portfolio_target or 50000),
+            "portfolio_target_visible": bool(user.portfolio_target_visible),
+            "current_loyalty_status": user.current_loyalty_status,
+            "next_loyalty_status":    user.next_loyalty_status,
+            "next_amount_to_upgrade": float(user.next_amount_to_upgrade),
+        })
+
+
+class LoyaltyTiersView(APIView):
+    """GET /api/dashboard/loyalty-tiers/ — full tier table + this user's
+    progress, for the Loyalty Program "about" modal."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Sum
+        from decimal import Decimal
+
+        user = request.user
+        total_deposits = Transaction.objects.filter(
+            user=user, tx_type="deposit", status="completed",
+        ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+
+        tiers = [
+            {
+                "key":            key,
+                "name":           key.capitalize(),
+                "min_deposit":    cfg["min_deposit"],
+                "referral_bonus": cfg["referral_bonus"],
+                "rank_bonus":     cfg["rank_bonus"],
+            }
+            for key, cfg in User.LOYALTY_TIER_CONFIG.items()
+        ]
+
+        return Response({
+            "tiers":                  tiers,
+            "current_tier":           user.current_loyalty_status,
+            "next_tier":              user.next_loyalty_status,
+            "total_deposits":         float(total_deposits),
+            "next_amount_to_upgrade": float(user.next_amount_to_upgrade),
         })
 
 
@@ -583,6 +618,79 @@ class DepositView(APIView):
         )
 
 
+class DepositIntentView(APIView):
+    """POST /api/transactions/deposit-intent/
+
+    Fired when the user hits "Continue" on the deposit amount step — before
+    they've reached the address/upload step or submitted anything. Notifies
+    ADMIN_NOTIFICATION_EMAIL so staff can follow up if no confirmed deposit
+    is ever submitted. Does not create a Transaction row."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def post(self, request):
+        from .models import CryptoPrice
+        from decimal import Decimal, InvalidOperation
+
+        wallet = AdminWallet.objects.filter(pk=request.data.get("wallet_id")).first()
+        if not wallet:
+            return Response({"detail": "Invalid wallet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            amount_usd = Decimal(str(request.data.get("amount_usd")))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+        if amount_usd <= 0:
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cp = CryptoPrice.objects.get(symbol=wallet.symbol)
+            units = (amount_usd / cp.price_usd).quantize(Decimal("0.00000001")) if cp.price_usd > 0 else amount_usd
+        except CryptoPrice.DoesNotExist:
+            units = amount_usd
+
+        units_str = f"{units:.8f}".rstrip("0").rstrip(".") or "0"
+
+        send_admin_payment_intent_notification(request.user, wallet.symbol, amount_usd, units_str)
+        return Response({"detail": "ok"})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Withdrawal intent
+# ─────────────────────────────────────────────────────────────────────────────
+
+class WithdrawalIntentView(APIView):
+    """POST /api/transactions/withdrawal-intent/
+
+    Fired the moment the user clicks "Confirm Withdrawal" — fire-and-forget
+    from the frontend, independent of whether the real withdrawal request
+    below succeeds. Notifies ADMIN_NOTIFICATION_EMAIL so staff have an early
+    signal. Does not create a Transaction row."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def post(self, request):
+        from decimal import Decimal, InvalidOperation
+
+        wallet = AdminWallet.objects.filter(pk=request.data.get("wallet_id")).first()
+        if not wallet:
+            return Response({"detail": "Invalid wallet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            amount_usd = Decimal(str(request.data.get("amount_usd")))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+        if amount_usd <= 0:
+            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
+
+        withdraw_from = request.data.get("withdraw_from")
+        source_label  = "Available Balance" if withdraw_from == "balance" else "Profit (ROI)"
+        wallet_address = request.data.get("wallet_address", "") or "N/A"
+
+        send_admin_withdrawal_intent_notification(request.user, wallet.symbol, amount_usd, source_label, wallet_address)
+        return Response({"detail": "ok"})
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Withdrawal
 # ─────────────────────────────────────────────────────────────────────────────
@@ -645,7 +753,13 @@ class WithdrawalView(APIView):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TraderListView(APIView):
-    """GET /api/traders/?search=<query>"""
+    """GET /api/traders/?search=<query>
+
+    List sections are computed by slicing the trader queryset (ordered by
+    gain, then copiers) — matching orchard_capitals, which has no stored
+    section/rank concept and derives "Trending"/"Rising Stars" the same way
+    on its own list page.
+    """
     authentication_classes = [CookieJWTAuthentication]
     permission_classes     = [IsAuthenticated]
 
@@ -655,28 +769,16 @@ class TraderListView(APIView):
 
         if search:
             qs = Trader.objects.filter(
-                Q(name__icontains=search)     |
-                Q(specialty__icontains=search) |
-                Q(trader_tags__name__icontains=search)
+                Q(name__icontains=search) | Q(username__icontains=search)
             ).distinct()
             return Response({"search_results": TraderSerializer(qs, many=True).data})
 
-        sections = ["trending", "rising_stars", "most_copied", "reliable", "proven"]
-        result = {}
-        for section in sections:
-            memberships = (
-                TraderSection.objects
-                .filter(section=section)
-                .select_related("trader")
-                .order_by("rank")
-            )
-            traders = []
-            for m in memberships:
-                t = m.trader
-                t._section_rank = m.rank
-                traders.append(t)
-            result[section] = TraderSerializer(traders, many=True).data
-
+        all_traders = list(Trader.objects.filter(is_active=True))
+        result = {
+            "trending":     TraderSerializer(all_traders[:4], many=True).data,
+            "rising_stars": TraderSerializer(all_traders[4:8], many=True).data,
+            "most_copied":  TraderSerializer(all_traders, many=True).data,
+        }
         return Response(result)
 
 
@@ -726,7 +828,7 @@ class CopyTraderView(APIView):
             )
 
         funds = request.user.balance + request.user.roi
-        if funds < trader.min_capital:
+        if funds < trader.min_account_threshold:
             return Response(
                 {"detail": "Insufficient balance to copy this trader."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -735,7 +837,7 @@ class CopyTraderView(APIView):
         CopyRelationship.objects.get_or_create(
             copier=request.user,
             trader=trader,
-            defaults={"allocated_amount": trader.min_capital},
+            defaults={"allocated_amount": trader.min_account_threshold},
         )
         return Response({"status": "copying"})
 
@@ -754,39 +856,6 @@ class CopyTraderView(APIView):
         return Response({"status": "cancel_requested"})
 
 
-class TraderPositionListView(APIView):
-    """GET /api/traders/<pk>/positions/"""
-    authentication_classes = [CookieJWTAuthentication]
-    permission_classes     = [IsAuthenticated]
-
-    def get(self, request, pk):
-        positions = TraderPosition.objects.filter(trader_id=pk)
-        return Response(TraderPositionSerializer(positions, many=True).data)
-
-
-class TraderHistoryListView(APIView):
-    """GET /api/traders/<pk>/history/"""
-    authentication_classes = [CookieJWTAuthentication]
-    permission_classes     = [IsAuthenticated]
-
-    def get(self, request, pk):
-        history = TradeHistory.objects.filter(trader_id=pk)
-        return Response(TradeHistorySerializer(history, many=True).data)
-
-
-class TraderCopierListView(APIView):
-    """GET /api/traders/<pk>/copiers/ — real copiers first, then demo copiers,
-    both shown together as one "Copiers" list."""
-    authentication_classes = [CookieJWTAuthentication]
-    permission_classes     = [IsAuthenticated]
-
-    def get(self, request, pk):
-        real = CopyRelationship.objects.filter(trader_id=pk, status="active").select_related("copier")
-        demo = DummyCopier.objects.filter(trader_id=pk)
-        data = CopyRelationshipSerializer(real, many=True).data + DummyCopierSerializer(demo, many=True).data
-        return Response(data)
-
-
 class TraderSimilarListView(APIView):
     """GET /api/traders/<pk>/similar/"""
     authentication_classes = [CookieJWTAuthentication]
@@ -798,7 +867,7 @@ class TraderSimilarListView(APIView):
         except Trader.DoesNotExist:
             return Response({"detail": "Trader not found."}, status=status.HTTP_404_NOT_FOUND)
         similar = Trader.objects.filter(
-            market_category=trader.market_category,
+            category=trader.category,
         ).exclude(pk=pk)[:8]
         return Response(TraderSerializer(similar, many=True).data)
 
@@ -852,9 +921,9 @@ class PortfolioBreakdownView(APIView):
             {
                 "category":     "total",
                 "label":        "Total Balance",
-                "legend_color": "#2a5a3c",
-                "base_color":   "#1e4a30",
-                "line_color":   "#3a7a50",
+                "legend_color": "#06811d",
+                "base_color":   "#056617",
+                "line_color":   "#0a9724",
                 "pnl":          str(round(total_balance, 2)),
                 "pct":          pct_bar(total_balance),
                 "count":        0,
@@ -862,9 +931,9 @@ class PortfolioBreakdownView(APIView):
             {
                 "category":     "balance",
                 "label":        "Deposited",
-                "legend_color": "#9ab4a2",
-                "base_color":   "#8aaa96",
-                "line_color":   "#a8c4b0",
+                "legend_color": "#a3d9ab",
+                "base_color":   "#8fcf9a",
+                "line_color":   "#b8e2c0",
                 "pnl":          str(round(balance, 2)),
                 "pct":          pct_bar(balance),
                 "count":        0,
@@ -872,9 +941,9 @@ class PortfolioBreakdownView(APIView):
             {
                 "category":     "profit",
                 "label":        "Profit",
-                "legend_color": "#4a7862",
-                "base_color":   "#3d6852",
-                "line_color":   "#527c66",
+                "legend_color": "#149c33",
+                "base_color":   "#0f8629",
+                "line_color":   "#1cb33e",
                 "pnl":          str(round(roi, 2)),
                 "pct":          pct_bar(roi),
                 "count":        0,
@@ -955,23 +1024,37 @@ class TransferView(APIView):
 
 
 class PortfolioChartView(APIView):
-    """GET /api/dashboard/portfolio-chart/ -- cumulative PNL time-series for the balance line chart."""
+    """GET /api/dashboard/portfolio-chart/?period=1d|1w|1m|3m|1y|all -- cumulative
+    P&L time-series for the "Asset Growth" chart, built from the user's
+    CopyTrade records. Cumulative sum is relative to the start of the
+    selected period (resets per period, not all-time). Default: all."""
     authentication_classes = [CookieJWTAuthentication]
     permission_classes     = [IsAuthenticated]
+
+    PERIOD_DELTAS = {
+        "1d": timedelta(days=1),
+        "1w": timedelta(weeks=1),
+        "1m": timedelta(days=30),
+        "3m": timedelta(days=90),
+        "1y": timedelta(days=365),
+    }
 
     def get(self, request):
         from django.db.models import Sum
         from django.db.models.functions import TruncDate
         from django.utils import timezone
-        from datetime import timedelta
         from decimal import Decimal
 
-        user  = request.user
-        since = timezone.now() - timedelta(days=90)
+        user   = request.user
+        period = request.query_params.get("period", "all").lower()
+
+        qs = CopyTrade.objects.filter(user=user)
+        delta = self.PERIOD_DELTAS.get(period)
+        if delta is not None:
+            qs = qs.filter(created_at__gte=timezone.now() - delta)
 
         daily_rows = (
-            CopyTrade.objects
-            .filter(user=user, created_at__gte=since)
+            qs
             .annotate(day=TruncDate("created_at"))
             .values("day")
             .annotate(daily_pnl=Sum("pnl"))
@@ -988,7 +1071,11 @@ class PortfolioChartView(APIView):
                 "cumulative_pnl": float(cumulative),
             })
 
-        return Response({"points": points})
+        return Response({
+            "period":    period if delta is not None else "all",
+            "points":    points,
+            "total_pnl": float(cumulative),
+        })
 
 
 class SyncTriggerView(APIView):
@@ -1238,7 +1325,7 @@ class PaymentMethodListView(APIView):
                 "name_display": w.get_name_display(),
                 "symbol":       w.symbol,
                 "network":      w.network,
-                "icon_url":     w.icon.url if w.icon else None,
+                "icon_url":     w.get_icon_url() or None,
                 "address":      pm.address if pm else "",
                 "has_method":   pm is not None,
             })

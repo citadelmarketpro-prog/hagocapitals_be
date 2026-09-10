@@ -1,211 +1,476 @@
 {% extends "panel/base.html" %}
-{% load dict_extras %}
 {% block title %}{{ action }} Trader — HagoCapitals Admin{% endblock %}
 {% block heading %}{{ action }} Trader{% endblock %}
 {% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#B0D45A;">Traders</a> / {% if obj %}<a href="{% url 'panel:trader_detail' obj.pk %}" style="color:#B0D45A;">{{ obj.name }}</a> / {% endif %}{{ action }}{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl">
-  <div class="panel-card p-6">
+  <div class="panel-card p-4 sm:p-6">
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       {% if form.non_field_errors %}
         {% for err in form.non_field_errors %}<div class="flash-msg flash-error mb-4">{{ err }}</div>{% endfor %}
       {% endif %}
 
+      {% if not obj %}
+      <!-- Preset Auto-fill -->
+      <div class="mb-6 p-4 rounded-lg" style="background:#0d2016; border:1px solid #B0D45A;">
+        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2" style="color:#B0D45A;">
+          ✎ Auto-fill from Preset
+        </h3>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <select id="presetSelect" class="form-control flex-1">
+            <option value="">— Select a trader preset —</option>
+          </select>
+          <button type="button" id="loadPresetBtn" class="btn btn-primary whitespace-nowrap" style="padding:10px 20px;">
+            ⬇ Load Preset
+          </button>
+        </div>
+        <p class="text-xs mt-2" style="color:#8fa896;">All fields will be filled automatically — review and edit before submitting.</p>
+      </div>
+      {% endif %}
+
       <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b" style="color:#8fa896; border-color:#1e3827;">Identity</h3>
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="mb-4 col-span-2 md:col-span-1">
           <label class="form-label">Name *</label>
-          <input type="text" name="name" value="{{ form.name.value|default:'' }}" class="form-control" required />
+          <input type="text" id="id_name" name="name" value="{{ form.name.value|default:'' }}" class="form-control" placeholder="Kristijan" required />
         </div>
         <div class="mb-4 col-span-2 md:col-span-1">
-          <label class="form-label">Specialty</label>
-          <input type="text" name="specialty" value="{{ form.specialty.value|default:'' }}" class="form-control" placeholder="e.g. Crypto Day Trader" />
+          <label class="form-label">Username</label>
+          <input type="text" id="id_username" name="username" value="{{ form.username.value|default:'' }}" class="form-control" placeholder="@kristijan" />
+          <p class="text-xs mt-1" style="color:#8fa896;">Must be unique. Optional.</p>
         </div>
         <div class="mb-4 col-span-2">
           <label class="form-label">Bio</label>
-          <textarea name="bio" class="form-control" rows="3" placeholder="Short trader biography…">{{ form.bio.value|default:'' }}</textarea>
+          <textarea id="id_bio" name="bio" class="form-control" rows="3" placeholder="Short trader biography…">{{ form.bio.value|default:'' }}</textarea>
         </div>
         <div class="mb-4">
           <label class="form-label">Avatar Image</label>
           <input type="file" name="avatar" class="form-control" accept="image/*" />
         </div>
         <div class="mb-4">
-          <label class="form-label">Avatar Color (fallback)</label>
-          <input type="color" name="avatar_color" value="{{ form.avatar_color.value|default:'#4a7a6a' }}" class="form-control" style="height:42px; padding:4px;" />
+          <label class="form-label">Country</label>
+          <select id="id_country" name="country" class="form-control">
+            <option value="">— Select Country —</option>
+            {% for c in country_choices %}
+              <option value="{{ c }}" {% if form.country.value == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Country Flag Image</label>
+          <input type="file" name="country_flag" class="form-control" accept="image/*" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Badge Level</label>
+          <select id="id_badge" name="badge" class="form-control">
+            {% for val, label in form.fields.badge.choices %}
+              <option value="{{ val }}" {% if form.badge.value == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-4 flex items-center gap-2" style="padding-top:26px;">
+          <input type="checkbox" name="is_active" id="id_is_active" {% if form.is_active.value %}checked{% endif %} style="accent-color:#B0D45A; width:16px; height:16px;" />
+          <label class="form-label" for="id_is_active" style="margin:0;">Available for copying</label>
         </div>
       </div>
 
       <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Performance</h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div class="mb-4"><label class="form-label">ROI (%)</label><input type="number" name="roi" value="{{ form.roi.value|default:'0' }}" class="form-control" step="0.01" /></div>
-        <div class="mb-4"><label class="form-label">Win Rate (%)</label><input type="number" name="win_rate" value="{{ form.win_rate.value|default:'0' }}" class="form-control" step="0.01" /></div>
-        <div class="mb-4"><label class="form-label">Copiers Count</label><input type="number" name="copiers_count" value="{{ form.copiers_count.value|default:'0' }}" class="form-control" /></div>
-        <div class="mb-4"><label class="form-label">Followers</label><input type="number" name="followers_count" value="{{ form.followers_count.value|default:'0' }}" class="form-control" /></div>
-        <div class="mb-4"><label class="form-label">Trading Days</label><input type="number" name="trading_days" value="{{ form.trading_days.value|default:'0' }}" class="form-control" /></div>
-        <div class="mb-4"><label class="form-label">Min Capital ($)</label><input type="number" name="min_capital" value="{{ form.min_capital.value|default:'0' }}" class="form-control" step="0.01" /></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="mb-4"><label class="form-label">Gain / ROI (%)</label><input type="number" id="id_gain" name="gain" value="{{ form.gain.value|default:'' }}" class="form-control" step="0.01" placeholder="126799.00" /></div>
+        <div class="mb-4"><label class="form-label">Copiers</label><input type="number" id="id_copiers" name="copiers" value="{{ form.copiers.value|default:'' }}" class="form-control" placeholder="40" /></div>
+        <div class="mb-4"><label class="form-label">Followers</label><input type="number" id="id_followers" name="followers" value="{{ form.followers.value|default:'0' }}" class="form-control" placeholder="120" /></div>
+        <div class="mb-4"><label class="form-label">Trading Days</label><input type="number" id="id_trading_days" name="trading_days" value="{{ form.trading_days.value|default:'0' }}" class="form-control" placeholder="500" /></div>
+        <div class="mb-4"><label class="form-label">Min Account Threshold ($)</label><input type="number" id="id_min_account_threshold" name="min_account_threshold" value="{{ form.min_account_threshold.value|default:'0' }}" class="form-control" step="0.01" placeholder="50000.00" /></div>
+        <div class="mb-4"><label class="form-label">Capital Under Management ($)</label><input type="text" id="id_capital" name="capital" value="{{ form.capital.value|default:'' }}" class="form-control" placeholder="50000" /></div>
+        <div class="mb-4"><label class="form-label">Total Trades</label><input type="number" id="id_trades" name="trades" value="{{ form.trades.value|default:'' }}" class="form-control" placeholder="251" /></div>
+        <div class="mb-4">
+          <label class="form-label">Avg Trade Time</label>
+          <select id="id_avg_trade_time" name="avg_trade_time" class="form-control">
+            <option value="">— Select —</option>
+            {% for val, label in form.fields.avg_trade_time.choices %}
+              {% if val %}<option value="{{ val }}" {% if form.avg_trade_time.value == val %}selected{% endif %}>{{ label }}</option>{% endif %}
+            {% endfor %}
+          </select>
+        </div>
       </div>
 
       <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Detail Stats</h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div class="mb-4"><label class="form-label">Master PnL ($)</label><input type="number" name="master_pnl" value="{{ form.master_pnl.value|default:'0' }}" class="form-control" step="0.01" /></div>
-        <div class="mb-4"><label class="form-label">Account Assets ($)</label><input type="number" name="account_assets" value="{{ form.account_assets.value|default:'0' }}" class="form-control" step="0.01" /></div>
-        <div class="mb-4"><label class="form-label">Max Drawdown (%)</label><input type="number" name="max_drawdown" value="{{ form.max_drawdown.value|default:'0' }}" class="form-control" step="0.01" /></div>
-        <div class="mb-4"><label class="form-label">Cum. Earnings ($)</label><input type="number" name="cum_earnings" value="{{ form.cum_earnings.value|default:'0' }}" class="form-control" step="0.01" /></div>
-        <div class="mb-4"><label class="form-label">Cum. Copiers</label><input type="number" name="cum_copiers" value="{{ form.cum_copiers.value|default:'0' }}" class="form-control" /></div>
-        <div class="mb-4"><label class="form-label">Profit Share (%)</label><input type="number" name="profit_share" value="{{ form.profit_share.value|default:'0' }}" class="form-control" step="0.01" /></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="mb-4"><label class="form-label">Max Drawdown (%)</label><input type="number" id="id_max_drawdown" name="max_drawdown" value="{{ form.max_drawdown.value|default:'0' }}" class="form-control" step="0.01" placeholder="15.50" /></div>
+        <div class="mb-4"><label class="form-label">Cum. Earnings of Copiers ($)</label><input type="number" id="id_cumulative_earnings_copiers" name="cumulative_earnings_copiers" value="{{ form.cumulative_earnings_copiers.value|default:'0' }}" class="form-control" step="0.01" placeholder="250000.00" /></div>
+        <div class="mb-4"><label class="form-label">Cum. Copiers</label><input type="number" id="id_cumulative_copiers" name="cumulative_copiers" value="{{ form.cumulative_copiers.value|default:'0' }}" class="form-control" placeholder="500" /></div>
+      </div>
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">About Section</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="mb-4"><label class="form-label">Subscribers</label><input type="number" id="id_subscribers" name="subscribers" value="{{ form.subscribers.value|default:'0' }}" class="form-control" placeholder="49" /></div>
+        <div class="mb-4"><label class="form-label">Current Open Positions</label><input type="number" id="id_current_positions" name="current_positions" value="{{ form.current_positions.value|default:'0' }}" class="form-control" placeholder="3" /></div>
+        <div class="mb-4"><label class="form-label">Expert Rating (out of 5.00)</label><input type="number" id="id_expert_rating" name="expert_rating" value="{{ form.expert_rating.value|default:'5.00' }}" class="form-control" step="0.01" min="0" max="5" placeholder="4.80" /></div>
+      </div>
+
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Performance Metrics</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="mb-4"><label class="form-label">Return YTD (%)</label><input type="number" id="id_return_ytd" name="return_ytd" value="{{ form.return_ytd.value|default:'0' }}" class="form-control" step="0.01" placeholder="2187.00" /></div>
+        <div class="mb-4"><label class="form-label">Return 2Y (%)</label><input type="number" id="id_return_2y" name="return_2y" value="{{ form.return_2y.value|default:'0' }}" class="form-control" step="0.01" placeholder="5000.00" /></div>
+        <div class="mb-4"><label class="form-label">Avg Score (7D)</label><input type="number" id="id_avg_score_7d" name="avg_score_7d" value="{{ form.avg_score_7d.value|default:'0' }}" class="form-control" step="0.01" placeholder="9.30" /></div>
+        <div class="mb-4"><label class="form-label">Profitable Weeks (%)</label><input type="number" id="id_profitable_weeks" name="profitable_weeks" value="{{ form.profitable_weeks.value|default:'0' }}" class="form-control" step="0.01" placeholder="92.00" /></div>
+        <div class="mb-4"><label class="form-label">Total Trades (12M)</label><input type="number" id="id_total_trades_12m" name="total_trades_12m" value="{{ form.total_trades_12m.value|default:'0' }}" class="form-control" placeholder="150" /></div>
+        <div class="mb-4"><label class="form-label">Avg Profit (%)</label><input type="number" id="id_avg_profit_percent" name="avg_profit_percent" value="{{ form.avg_profit_percent.value|default:'' }}" class="form-control" step="0.01" placeholder="86.00" /></div>
+        <div class="mb-4"><label class="form-label">Avg Loss (%)</label><input type="number" id="id_avg_loss_percent" name="avg_loss_percent" value="{{ form.avg_loss_percent.value|default:'' }}" class="form-control" step="0.01" placeholder="8.00" /></div>
+        <div class="mb-4"><label class="form-label">Total Wins</label><input type="number" id="id_total_wins" name="total_wins" value="{{ form.total_wins.value|default:'' }}" class="form-control" placeholder="1166" /></div>
+        <div class="mb-4"><label class="form-label">Total Losses</label><input type="number" id="id_total_losses" name="total_losses" value="{{ form.total_losses.value|default:'' }}" class="form-control" placeholder="160" /></div>
       </div>
 
       <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Categorisation</h3>
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="mb-4">
-          <label class="form-label">Risk Level</label>
-          <select name="risk_level" class="form-control">
+          <label class="form-label">Category</label>
+          <select id="id_category" name="category" class="form-control">
             <option value="">— Select —</option>
-            {% for val, label in form.fields.risk_level.choices %}
-              <option value="{{ val }}" {% if form.risk_level.value == val %}selected{% endif %}>{{ label }}</option>
+            {% for val, label in form.fields.category.choices %}
+              <option value="{{ val }}" {% if form.category.value == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="mb-4">
-          <label class="form-label">Market Category</label>
-          <select name="market_category" class="form-control">
-            <option value="">— Select —</option>
-            {% for val, label in form.fields.market_category.choices %}
-              <option value="{{ val }}" {% if form.market_category.value == val %}selected{% endif %}>{{ label }}</option>
+          <label class="form-label">Risk Score (1–10)</label>
+          <input type="number" id="id_risk" name="risk" value="{{ form.risk.value|default:'' }}" class="form-control" min="1" max="10" placeholder="7" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Chart Trend Direction</label>
+          <select id="id_trend_direction" name="trend_direction" class="form-control">
+            {% for val, label in form.fields.trend_direction.choices %}
+              <option value="{{ val }}" {% if form.trend_direction.value == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
       </div>
-
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-1 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Portfolio Allocation</h3>
-      <p class="text-xs mb-3" style="color:#8fa896;">
-        {% if obj %}
-          Adjust percentages, add rows, or tick "Remove" to delete one — saved together with the rest of this form.
-        {% else %}
-          Optional — set this trader's allocation breakdown now, or leave every row blank and add it later from the trader's page.
-        {% endif %}
-        Use "+ Add Allocation Row" below for as many as you need.
-      </p>
-      <div class="mb-6 p-4 rounded-lg" style="background:#0d2016; border:1px solid #1e3827;">
-        {{ allocation_fs.management_form }}
-        {% if allocation_fs.non_form_errors %}
-          <div class="flash-msg flash-error mb-3">{{ allocation_fs.non_form_errors }}</div>
-        {% endif %}
-        <div id="alloc-rows">
-          {% for alloc_form in allocation_fs %}
-            <div class="alloc-row grid grid-cols-12 gap-2 items-end mb-3 pb-3" style="border-bottom:1px solid #1e3827;">
-              {{ alloc_form.id }}
-              <div class="col-span-4">
-                <label class="form-label">Label</label>
-                {{ alloc_form.label }}
-                {% for err in alloc_form.label.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ err }}</p>{% endfor %}
-              </div>
-              <div class="col-span-3 md:col-span-2">
-                <label class="form-label">Percent</label>
-                {{ alloc_form.pct }}
-                {% for err in alloc_form.pct.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ err }}</p>{% endfor %}
-              </div>
-              <div class="col-span-2">
-                <label class="form-label">Color</label>
-                {{ alloc_form.color }}
-              </div>
-              <div class="col-span-2">
-                <label class="form-label">Order</label>
-                {{ alloc_form.order }}
-              </div>
-              <div class="col-span-1 md:col-span-2 flex justify-end" style="padding-bottom:10px;">
-                {% if alloc_form.instance.pk %}
-                <label class="flex items-center gap-1 cursor-pointer" title="Remove this allocation">
-                  {{ alloc_form.DELETE }}
-                  <span class="text-xs" style="color:#f87171;">Del</span>
-                </label>
-                {% else %}
-                <button type="button" class="alloc-remove-row text-xs" style="color:#f87171; background:none; border:none; cursor:pointer;" title="Remove this row">✕ Remove</button>
-                {% endif %}
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-        <button type="button" id="alloc-add-row" class="btn btn-ghost" style="padding:6px 14px; font-size:12px;">+ Add Allocation Row</button>
-      </div>
-
-      <template id="alloc-empty-form-template">
-        <div class="alloc-row grid grid-cols-12 gap-2 items-end mb-3 pb-3" style="border-bottom:1px solid #1e3827;">
-          {{ allocation_fs.empty_form.id }}
-          <div class="col-span-4">
-            <label class="form-label">Label</label>
-            {{ allocation_fs.empty_form.label }}
-          </div>
-          <div class="col-span-3 md:col-span-2">
-            <label class="form-label">Percent</label>
-            {{ allocation_fs.empty_form.pct }}
-          </div>
-          <div class="col-span-2">
-            <label class="form-label">Color</label>
-            {{ allocation_fs.empty_form.color }}
-          </div>
-          <div class="col-span-2">
-            <label class="form-label">Order</label>
-            {{ allocation_fs.empty_form.order }}
-          </div>
-          <div class="col-span-1 md:col-span-2 flex justify-end" style="padding-bottom:10px;">
-            <button type="button" class="alloc-remove-row text-xs" style="color:#f87171; background:none; border:none; cursor:pointer;" title="Remove this row">✕ Remove</button>
-          </div>
-        </div>
-      </template>
-      <script>
-      (function() {
-        var addBtn   = document.getElementById('alloc-add-row');
-        var rows     = document.getElementById('alloc-rows');
-        var template = document.getElementById('alloc-empty-form-template');
-        var totalForms = document.querySelector('input[name="alloc-TOTAL_FORMS"]');
-        if (!addBtn || !rows || !template || !totalForms) return;
-
-        function bindRemove(row) {
-          var btn = row.querySelector('.alloc-remove-row');
-          if (btn) btn.addEventListener('click', function() { row.remove(); });
-        }
-        rows.querySelectorAll('.alloc-row').forEach(bindRemove);
-
-        addBtn.addEventListener('click', function() {
-          var idx  = parseInt(totalForms.value, 10);
-          var html = template.innerHTML.split('__prefix__').join(idx);
-          var wrap = document.createElement('div');
-          wrap.innerHTML = html.trim();
-          var row = wrap.firstElementChild;
-          rows.appendChild(row);
-          bindRemove(row);
-          totalForms.value = idx + 1;
-        });
-      })();
-      </script>
 
       <h3 class="text-xs font-semibold uppercase tracking-widest mb-3 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Tags</h3>
-      <div class="flex flex-wrap gap-3 mb-6 p-4 rounded-lg" style="background:#0d2016; border:1px solid #1e3827;">
-        {% for val, label in form.trader_tags.field.choices %}
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" name="trader_tags" value="{{ val }}"
-            {% if val|str_in:form.trader_tags.value %}checked{% endif %}
-            style="accent-color:#B0D45A;" />
-          <span class="text-sm" style="color:#f0f0f0;">{{ label }}</span>
-        </label>
-        {% endfor %}
-        {% if not form.trader_tags.field.choices %}
-          <p class="text-xs" style="color:#8fa896;">No tags available. <a href="{% url 'panel:tag_create' %}" style="color:#B0D45A;">Create one</a></p>
-        {% endif %}
+      <div class="mb-6">
+        <textarea id="id_tags" name="tags" class="form-control" rows="2" placeholder='["Trending Investors", "Rising Stars"]'>{{ form.tags.value|default:'[]' }}</textarea>
+        <p class="text-xs mt-1" style="color:#8fa896;">JSON array of tag strings, e.g. ["Trending Investors", "Rising Stars"].</p>
       </div>
 
-      <div class="flex gap-3">
-        <button type="submit" class="btn btn-primary">{{ action }} Trader</button>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-1 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Additional Trading Data (JSON)</h3>
+      <p class="text-xs mb-3" style="color:#8fa896;">Optional — each field takes a JSON array. Leave blank to auto-fill with demo data when the trader is created.</p>
+      <div class="grid grid-cols-1 gap-4 mb-2">
+        <div class="mb-4">
+          <label class="form-label">Portfolio Breakdown</label>
+          <textarea id="id_portfolio_breakdown" name="portfolio_breakdown" class="form-control" rows="3" placeholder='[{"name": "ETF", "percentage": 25}, {"name": "Crypto", "percentage": 75}]'>{{ form.portfolio_breakdown.value|default:'' }}</textarea>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Top Traded</label>
+          <textarea id="id_top_traded" name="top_traded" class="form-control" rows="3" placeholder='[{"name": "Apple Inc", "ticker": "AAPL", "avg_profit": 12.5, "avg_loss": -3.2, "profitable_pct": 78}]'>{{ form.top_traded.value|default:'' }}</textarea>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Performance Data</label>
+          <textarea id="id_performance_data" name="performance_data" class="form-control" rows="2" placeholder='[{"month": "Jan", "value": 10000}]'>{{ form.performance_data.value|default:'' }}</textarea>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Monthly Performance</label>
+          <textarea id="id_monthly_performance" name="monthly_performance" class="form-control" rows="2" placeholder='[{"month": "Jan", "percentage": 5.2}]'>{{ form.monthly_performance.value|default:'' }}</textarea>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Frequently Traded</label>
+          <textarea id="id_frequently_traded" name="frequently_traded" class="form-control" rows="2" placeholder='["AAPL", "TSLA", "BTC"]'>{{ form.frequently_traded.value|default:'' }}</textarea>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button type="submit" class="btn btn-primary justify-center w-full sm:w-auto">{{ action }} Trader</button>
         {% if obj %}
-          <a href="{% url 'panel:trader_detail' obj.pk %}" class="btn btn-ghost">Cancel</a>
+          <a href="{% url 'panel:trader_detail' obj.pk %}" class="btn btn-ghost justify-center w-full sm:w-auto">Cancel</a>
         {% else %}
-          <a href="{% url 'panel:trader_list' %}" class="btn btn-ghost">Cancel</a>
+          <a href="{% url 'panel:trader_list' %}" class="btn btn-ghost justify-center w-full sm:w-auto">Cancel</a>
         {% endif %}
       </div>
     </form>
   </div>
 </div>
+
+<!-- Visual JSON builders for Tags / Portfolio Breakdown / Top Traded /
+     Performance Data / Monthly Performance / Frequently Traded — replaces
+     the plain JSON textareas above with add-a-row / chip widgets. -->
+{% include "panel/traders/json_builder_scripts.html" %}
+
+{% if not obj %}
+<script>
+// ============================================================================
+// TRADER PRESETS — realistic sample data to speed up manual entry.
+// All fields are editable after loading; nothing here is submitted as-is
+// unless the admin leaves it untouched.
+// ============================================================================
+const TRADER_PRESETS = [
+  { name:"Apex Quantitative", username:"apexquant", country:"United States", badge:"gold",
+    bio:"ApexQuant.io — Systematic options trader. 6+ years live. Consistent, disciplined, data-driven.",
+    category:"options", trend_direction:"upward", capital:"100000", gain:"109717.00", risk:"4",
+    avg_trade_time:"1 week", copiers:362, trades:802, avg_profit_percent:"32.50",
+    avg_loss_percent:"4.20", total_wins:842, total_losses:103, subscribers:506, followers:0,
+    current_positions:0, expert_rating:"4.83", return_ytd:"57.60", return_2y:"301.10",
+    avg_score_7d:"9.10", profitable_weeks:"72.00", min_account_threshold:"100000.00",
+    trading_days:2343, total_trades_12m:690, max_drawdown:"7.80",
+    cumulative_earnings_copiers:"24396605.00", cumulative_copiers:406, portfolio_breakdown:[{name:"Options",percentage:61},{name:"Crypto",percentage:24},{name:"Stocks",percentage:10},{name:"Cash",percentage:5}], top_traded:[{ticker:"TSLA",name:"Tesla Inc",avg_profit:25.6,avg_loss:-5.8,profitable_pct:74},{ticker:"AMZN",name:"Amazon.com Inc",avg_profit:14.9,avg_loss:-6.2,profitable_pct:72},{ticker:"BTC",name:"Bitcoin",avg_profit:28,avg_loss:-7,profitable_pct:78}], frequently_traded:["AAPL","TSLA","NVDA","BTC","XRP","META","GOLD","OIL"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Delta Sigma Pro", username:"deltasigma", country:"United Kingdom", badge:"gold",
+    bio:"DeltaSigmaPro.com — Volatility specialist. SPX & QQQ options. High win rate, low drawdown.",
+    category:"options", trend_direction:"upward", capital:"150000", gain:"84320.00", risk:"3",
+    avg_trade_time:"3 days", copiers:418, trades:1044, avg_profit_percent:"28.70",
+    avg_loss_percent:"3.10", total_wins:951, total_losses:93, subscribers:620, followers:0,
+    current_positions:0, expert_rating:"4.91", return_ytd:"72.10", return_2y:"344.50",
+    avg_score_7d:"9.40", profitable_weeks:"81.00", min_account_threshold:"150000.00",
+    trading_days:2190, total_trades_12m:780, max_drawdown:"3.80",
+    cumulative_earnings_copiers:"31200000.00", cumulative_copiers:512, portfolio_breakdown:[{name:"Options",percentage:70},{name:"Stocks",percentage:18},{name:"Cash",percentage:12}], top_traded:[{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:31.2,avg_loss:-4.1,profitable_pct:82},{ticker:"AAPL",name:"Apple Inc",avg_profit:18.4,avg_loss:-3.8,profitable_pct:79},{ticker:"SPX",name:"S&P 500 Index",avg_profit:24.6,avg_loss:-2.9,profitable_pct:84}], frequently_traded:["NVDA","AAPL","SPX","QQQ","MSFT","AMZN","GOOG"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Cipher Algo X", username:"cipheralgox", country:"Singapore", badge:"gold",
+    bio:"Algo-driven crypto and options hybrid system. Runs 24/7. No emotion, only edge.",
+    category:"crypto", trend_direction:"upward", capital:"80000", gain:"63840.00", risk:"5",
+    avg_trade_time:"3 days", copiers:294, trades:933, avg_profit_percent:"31.80",
+    avg_loss_percent:"5.10", total_wins:824, total_losses:109, subscribers:441, followers:0,
+    current_positions:0, expert_rating:"4.77", return_ytd:"44.20", return_2y:"268.30",
+    avg_score_7d:"8.90", profitable_weeks:"79.00", min_account_threshold:"80000.00",
+    trading_days:1847, total_trades_12m:610, max_drawdown:"5.10",
+    cumulative_earnings_copiers:"18750000.00", cumulative_copiers:338, portfolio_breakdown:[{name:"Crypto",percentage:55},{name:"Options",percentage:33},{name:"Cash",percentage:12}], top_traded:[{ticker:"BTC",name:"Bitcoin",avg_profit:34.5,avg_loss:-6.2,profitable_pct:81},{ticker:"ETH",name:"Ethereum",avg_profit:29.1,avg_loss:-5.8,profitable_pct:77},{ticker:"SOL",name:"Solana",avg_profit:41.2,avg_loss:-7.4,profitable_pct:73}], frequently_traded:["BTC","ETH","SOL","XRP","AVAX","LINK","BNB"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Valor Capital", username:"valorcap", country:"United States", badge:"gold",
+    bio:"ValorCapital.io — Growth equity and options. Clean entries, tight risk management.",
+    category:"stocks", trend_direction:"upward", capital:"100000", gain:"49510.00", risk:"3",
+    avg_trade_time:"1 week", copiers:388, trades:793, avg_profit_percent:"29.40",
+    avg_loss_percent:"3.80", total_wins:725, total_losses:68, subscribers:570, followers:0,
+    current_positions:0, expert_rating:"4.88", return_ytd:"61.40", return_2y:"289.70",
+    avg_score_7d:"9.20", profitable_weeks:"76.00", min_account_threshold:"100000.00",
+    trading_days:2100, total_trades_12m:655, max_drawdown:"4.60",
+    cumulative_earnings_copiers:"22100000.00", cumulative_copiers:444, portfolio_breakdown:[{name:"Options",percentage:55},{name:"Stocks",percentage:25},{name:"Crypto",percentage:15},{name:"Cash",percentage:5}], top_traded:[{ticker:"AAPL",name:"Apple Inc",avg_profit:22.3,avg_loss:-4.0,profitable_pct:80},{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:33.7,avg_loss:-4.9,profitable_pct:76},{ticker:"MSFT",name:"Microsoft Corp",avg_profit:19.8,avg_loss:-3.4,profitable_pct:82}], frequently_traded:["AAPL","NVDA","MSFT","AMZN","META","TSLA","QQQ"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Meridian Alpha", username:"meridianalpha", country:"United Kingdom", badge:"gold",
+    bio:"Futures and options hybrid. Macro-informed, technically executed. Running since 2019.",
+    category:"stocks", trend_direction:"upward", capital:"200000", gain:"38900.00", risk:"4",
+    avg_trade_time:"3 days", copiers:331, trades:871, avg_profit_percent:"26.10",
+    avg_loss_percent:"4.80", total_wins:778, total_losses:93, subscribers:495, followers:0,
+    current_positions:0, expert_rating:"4.72", return_ytd:"48.30", return_2y:"224.60",
+    avg_score_7d:"8.80", profitable_weeks:"70.00", min_account_threshold:"200000.00",
+    trading_days:1980, total_trades_12m:590, max_drawdown:"6.20",
+    cumulative_earnings_copiers:"16400000.00", cumulative_copiers:388, portfolio_breakdown:[{name:"Futures",percentage:48},{name:"Options",percentage:30},{name:"Stocks",percentage:14},{name:"Cash",percentage:8}], top_traded:[{ticker:"ES",name:"E-mini S&P 500",avg_profit:22.8,avg_loss:-5.3,profitable_pct:74},{ticker:"NQ",name:"E-mini Nasdaq",avg_profit:27.4,avg_loss:-5.9,profitable_pct:71},{ticker:"CL",name:"Crude Oil Futures",avg_profit:19.1,avg_loss:-4.7,profitable_pct:68}], frequently_traded:["ES","NQ","CL","GC","ZB","SI","HG"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Stellarpath Capital", username:"stellarpath", country:"Canada", badge:"gold",
+    bio:"StellarCapital.co — Verified since 2018. Long-term wealth compounders. Real trades, real results.",
+    category:"stocks", trend_direction:"upward", capital:"120000", gain:"71240.00", risk:"3",
+    avg_trade_time:"2 weeks", copiers:512, trades:1102, avg_profit_percent:"35.10",
+    avg_loss_percent:"4.90", total_wins:918, total_losses:184, subscribers:703, followers:0,
+    current_positions:0, expert_rating:"4.96", return_ytd:"66.90", return_2y:"312.40",
+    avg_score_7d:"9.50", profitable_weeks:"77.00", min_account_threshold:"120000.00",
+    trading_days:2430, total_trades_12m:720, max_drawdown:"4.90",
+    cumulative_earnings_copiers:"28900000.00", cumulative_copiers:590, portfolio_breakdown:[{name:"Options",percentage:60},{name:"Stocks",percentage:28},{name:"Cash",percentage:12}], top_traded:[{ticker:"AAPL",name:"Apple Inc",avg_profit:28.4,avg_loss:-4.3,profitable_pct:83},{ticker:"TSLA",name:"Tesla Inc",avg_profit:38.6,avg_loss:-6.1,profitable_pct:71},{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:42.1,avg_loss:-5.7,profitable_pct:77}], frequently_traded:["AAPL","TSLA","NVDA","SPX","AMZN","GOOG","MSFT"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Nebula Ventures", username:"nebulavx", country:"Australia", badge:"gold",
+    bio:"Cross-asset momentum trader. Options + crypto rotation model. 5 years live verified.",
+    category:"options", trend_direction:"upward", capital:"90000", gain:"56180.00", risk:"5",
+    avg_trade_time:"1 week", copiers:447, trades:968, avg_profit_percent:"30.20",
+    avg_loss_percent:"5.60", total_wins:856, total_losses:112, subscribers:634, followers:0,
+    current_positions:0, expert_rating:"4.89", return_ytd:"53.70", return_2y:"277.80",
+    avg_score_7d:"9.00", profitable_weeks:"73.00", min_account_threshold:"90000.00",
+    trading_days:1920, total_trades_12m:640, max_drawdown:"7.30",
+    cumulative_earnings_copiers:"20850000.00", cumulative_copiers:501, portfolio_breakdown:[{name:"Options",percentage:58},{name:"Crypto",percentage:28},{name:"Stocks",percentage:14}], top_traded:[{ticker:"QQQ",name:"Nasdaq ETF",avg_profit:26.7,avg_loss:-5.2,profitable_pct:76},{ticker:"ETH",name:"Ethereum",avg_profit:35.4,avg_loss:-6.8,profitable_pct:72},{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:31.9,avg_loss:-5.0,profitable_pct:79}], frequently_traded:["QQQ","ETH","NVDA","BTC","META","AAPL","SOL"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Ironclad Trading Co", username:"ironclad", country:"United States", badge:"gold",
+    bio:"IroncladeTrading.com — Blue chip stocks and index futures. Swing trader. Clean and consistent.",
+    category:"stocks", trend_direction:"upward", capital:"175000", gain:"91440.00", risk:"4",
+    avg_trade_time:"1 week", copiers:503, trades:988, avg_profit_percent:"34.10",
+    avg_loss_percent:"3.90", total_wins:896, total_losses:92, subscribers:681, followers:0,
+    current_positions:0, expert_rating:"4.94", return_ytd:"69.30", return_2y:"318.40",
+    avg_score_7d:"9.30", profitable_weeks:"80.00", min_account_threshold:"175000.00",
+    trading_days:2100, total_trades_12m:710, max_drawdown:"6.40",
+    cumulative_earnings_copiers:"26700000.00", cumulative_copiers:555, portfolio_breakdown:[{name:"Stocks",percentage:45},{name:"Options",percentage:35},{name:"Futures",percentage:15},{name:"Cash",percentage:5}], top_traded:[{ticker:"AAPL",name:"Apple Inc",avg_profit:27.3,avg_loss:-3.6,profitable_pct:84},{ticker:"AMZN",name:"Amazon.com Inc",avg_profit:22.8,avg_loss:-4.1,profitable_pct:80},{ticker:"ES",name:"E-mini S&P 500",avg_profit:19.4,avg_loss:-3.2,profitable_pct:83}], frequently_traded:["AAPL","AMZN","MSFT","ES","NQ","SPX","GOOG"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Zenith Edge", username:"zenithedge", country:"Singapore", badge:"gold",
+    bio:"ZenithEdge.io — Crypto + options rotation. Asia-Pacific hours. Systematic and transparent.",
+    category:"crypto", trend_direction:"upward", capital:"75000", gain:"44610.00", risk:"5",
+    avg_trade_time:"3 days", copiers:278, trades:814, avg_profit_percent:"27.30",
+    avg_loss_percent:"5.80", total_wins:700, total_losses:114, subscribers:402, followers:0,
+    current_positions:0, expert_rating:"4.81", return_ytd:"42.80", return_2y:"214.90",
+    avg_score_7d:"8.70", profitable_weeks:"74.00", min_account_threshold:"75000.00",
+    trading_days:1620, total_trades_12m:560, max_drawdown:"8.90",
+    cumulative_earnings_copiers:"13200000.00", cumulative_copiers:310, portfolio_breakdown:[{name:"Crypto",percentage:62},{name:"Options",percentage:26},{name:"Cash",percentage:12}], top_traded:[{ticker:"BTC",name:"Bitcoin",avg_profit:29.8,avg_loss:-6.4,profitable_pct:78},{ticker:"SOL",name:"Solana",avg_profit:38.2,avg_loss:-7.9,profitable_pct:70},{ticker:"XRP",name:"Ripple",avg_profit:24.6,avg_loss:-5.5,profitable_pct:74}], frequently_traded:["BTC","SOL","XRP","ETH","AVAX","DOT","MATIC"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Vermillion Capital", username:"vermillion", country:"Other", badge:"gold",
+    bio:"VermillionCapital.com — Elite options desk. Highest total gain on platform. 7+ years verified.",
+    category:"options", trend_direction:"upward", capital:"250000", gain:"127580.00", risk:"4",
+    avg_trade_time:"3 days", copiers:589, trades:1240, avg_profit_percent:"38.40",
+    avg_loss_percent:"5.20", total_wins:1024, total_losses:216, subscribers:812, followers:0,
+    current_positions:0, expert_rating:"4.97", return_ytd:"74.20", return_2y:"391.60",
+    avg_score_7d:"9.60", profitable_weeks:"78.00", min_account_threshold:"250000.00",
+    trading_days:2556, total_trades_12m:840, max_drawdown:"5.20",
+    cumulative_earnings_copiers:"38400000.00", cumulative_copiers:644, portfolio_breakdown:[{name:"Options",percentage:65},{name:"Crypto",percentage:22},{name:"Stocks",percentage:8},{name:"Cash",percentage:5}], top_traded:[{ticker:"SPX",name:"S&P 500 Index",avg_profit:41.2,avg_loss:-5.4,profitable_pct:82},{ticker:"BTC",name:"Bitcoin",avg_profit:36.8,avg_loss:-6.1,profitable_pct:79},{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:44.3,avg_loss:-5.9,profitable_pct:80}], frequently_traded:["SPX","QQQ","BTC","NVDA","AAPL","ETH","TSLA"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Orion Flux Capital", username:"orionflux", country:"United States", badge:"gold",
+    bio:"OrionFlux.com — SPX and NDX options specialist. Precision entries, asymmetric risk. 7 years live.",
+    category:"options", trend_direction:"upward", capital:"125000", gain:"98340.00", risk:"4",
+    avg_trade_time:"3 days", copiers:471, trades:1087, avg_profit_percent:"36.20",
+    avg_loss_percent:"4.50", total_wins:978, total_losses:109, subscribers:664, followers:0,
+    current_positions:0, expert_rating:"4.92", return_ytd:"63.80", return_2y:"328.10",
+    avg_score_7d:"9.30", profitable_weeks:"75.00", min_account_threshold:"125000.00",
+    trading_days:2418, total_trades_12m:730, max_drawdown:"6.10",
+    cumulative_earnings_copiers:"27600000.00", cumulative_copiers:524, portfolio_breakdown:[{name:"Options",percentage:68},{name:"Stocks",percentage:20},{name:"Cash",percentage:12}], top_traded:[{ticker:"SPX",name:"S&P 500 Index",avg_profit:38.4,avg_loss:-4.8,profitable_pct:81},{ticker:"QQQ",name:"Nasdaq ETF",avg_profit:29.7,avg_loss:-4.2,profitable_pct:79},{ticker:"AAPL",name:"Apple Inc",avg_profit:23.1,avg_loss:-3.9,profitable_pct:83}], frequently_traded:["SPX","QQQ","AAPL","NVDA","MSFT","AMZN","TSLA"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Kestrel Trading Group", username:"kestreltrading", country:"Canada", badge:"gold",
+    bio:"KestrelGroup.ca — Momentum swing trader. Earnings plays and breakout setups. Clean track record.",
+    category:"stocks", trend_direction:"upward", capital:"110000", gain:"52780.00", risk:"3",
+    avg_trade_time:"1 week", copiers:319, trades:876, avg_profit_percent:"24.60",
+    avg_loss_percent:"3.40", total_wins:798, total_losses:78, subscribers:488, followers:0,
+    current_positions:0, expert_rating:"4.85", return_ytd:"58.20", return_2y:"271.30",
+    avg_score_7d:"9.10", profitable_weeks:"76.00", min_account_threshold:"110000.00",
+    trading_days:1995, total_trades_12m:660, max_drawdown:"4.30",
+    cumulative_earnings_copiers:"19800000.00", cumulative_copiers:372, portfolio_breakdown:[{name:"Stocks",percentage:50},{name:"Options",percentage:38},{name:"Cash",percentage:12}], top_traded:[{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:27.4,avg_loss:-3.8,profitable_pct:82},{ticker:"META",name:"Meta Platforms",avg_profit:21.9,avg_loss:-3.2,profitable_pct:80},{ticker:"AMZN",name:"Amazon.com Inc",avg_profit:19.3,avg_loss:-3.6,profitable_pct:78}], frequently_traded:["NVDA","META","AMZN","GOOG","MSFT","CRM","SHOP"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Solstice Markets", username:"solsticemkts", country:"Australia", badge:"gold",
+    bio:"SolsticeMarkets.com.au — Index futures and ETF options. Macro-driven. Consistent weekly returns.",
+    category:"stocks", trend_direction:"upward", capital:"180000", gain:"76450.00", risk:"4",
+    avg_trade_time:"3 days", copiers:396, trades:942, avg_profit_percent:"27.80",
+    avg_loss_percent:"4.10", total_wins:844, total_losses:98, subscribers:571, followers:0,
+    current_positions:0, expert_rating:"4.87", return_ytd:"55.40", return_2y:"295.60",
+    avg_score_7d:"9.00", profitable_weeks:"73.00", min_account_threshold:"180000.00",
+    trading_days:2205, total_trades_12m:675, max_drawdown:"5.80",
+    cumulative_earnings_copiers:"23500000.00", cumulative_copiers:461, portfolio_breakdown:[{name:"Futures",percentage:52},{name:"Options",percentage:32},{name:"Stocks",percentage:10},{name:"Cash",percentage:6}], top_traded:[{ticker:"NQ",name:"E-mini Nasdaq",avg_profit:29.3,avg_loss:-4.6,profitable_pct:76},{ticker:"ES",name:"E-mini S&P 500",avg_profit:23.7,avg_loss:-4.0,profitable_pct:79},{ticker:"GC",name:"Gold Futures",avg_profit:18.2,avg_loss:-3.5,profitable_pct:72}], frequently_traded:["NQ","ES","GC","CL","ZB","RTY","YM"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Pyxis Alpha Fund", username:"pyxisalpha", country:"Germany", badge:"gold",
+    bio:"PyxisAlpha.de — European macro + US equities. Quant model, human oversight. 8 years verified.",
+    category:"stocks", trend_direction:"upward", capital:"200000", gain:"115660.00", risk:"3",
+    avg_trade_time:"2 weeks", copiers:533, trades:1156, avg_profit_percent:"33.90",
+    avg_loss_percent:"3.60", total_wins:1048, total_losses:108, subscribers:742, followers:0,
+    current_positions:0, expert_rating:"4.95", return_ytd:"68.70", return_2y:"361.20",
+    avg_score_7d:"9.50", profitable_weeks:"80.00", min_account_threshold:"200000.00",
+    trading_days:2556, total_trades_12m:790, max_drawdown:"4.20",
+    cumulative_earnings_copiers:"34100000.00", cumulative_copiers:601, portfolio_breakdown:[{name:"Stocks",percentage:44},{name:"Options",percentage:40},{name:"Cash",percentage:16}], top_traded:[{ticker:"AAPL",name:"Apple Inc",avg_profit:30.1,avg_loss:-3.7,profitable_pct:85},{ticker:"MSFT",name:"Microsoft Corp",avg_profit:26.4,avg_loss:-3.2,profitable_pct:83},{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:39.8,avg_loss:-4.4,profitable_pct:78}], frequently_traded:["AAPL","MSFT","NVDA","AMZN","SAP","ASML","GOOG"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Halverson Signal", username:"halvorsonsig", country:"Norway", badge:"gold",
+    bio:"HalvorsonSignal.no — Systematic equity long/short. Risk-adjusted returns. Low drawdown focus.",
+    category:"stocks", trend_direction:"upward", capital:"95000", gain:"41320.00", risk:"2",
+    avg_trade_time:"2 weeks", copiers:244, trades:728, avg_profit_percent:"22.10",
+    avg_loss_percent:"2.80", total_wins:672, total_losses:56, subscribers:358, followers:0,
+    current_positions:0, expert_rating:"4.79", return_ytd:"38.60", return_2y:"198.40",
+    avg_score_7d:"8.60", profitable_weeks:"78.00", min_account_threshold:"95000.00",
+    trading_days:1750, total_trades_12m:510, max_drawdown:"3.10",
+    cumulative_earnings_copiers:"11400000.00", cumulative_copiers:281, portfolio_breakdown:[{name:"Stocks",percentage:65},{name:"Options",percentage:25},{name:"Cash",percentage:10}], top_traded:[{ticker:"MSFT",name:"Microsoft Corp",avg_profit:20.4,avg_loss:-2.9,profitable_pct:86},{ticker:"AAPL",name:"Apple Inc",avg_profit:18.7,avg_loss:-2.6,profitable_pct:87},{ticker:"GOOG",name:"Alphabet Inc",avg_profit:17.3,avg_loss:-3.1,profitable_pct:84}], frequently_traded:["MSFT","AAPL","GOOG","AMZN","NVDA","V","JPM"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Cascadia Prime", username:"cascadiaprime", country:"United States", badge:"gold",
+    bio:"CascadiaPrime.com — Pacific Northwest based. SPX options and crypto. Aggressive growth model.",
+    category:"options", trend_direction:"upward", capital:"85000", gain:"67920.00", risk:"6",
+    avg_trade_time:"1 day", copiers:307, trades:1310, avg_profit_percent:"41.30",
+    avg_loss_percent:"7.20", total_wins:1091, total_losses:219, subscribers:445, followers:0,
+    current_positions:0, expert_rating:"4.74", return_ytd:"49.50", return_2y:"244.80",
+    avg_score_7d:"8.80", profitable_weeks:"69.00", min_account_threshold:"85000.00",
+    trading_days:1680, total_trades_12m:870, max_drawdown:"9.40",
+    cumulative_earnings_copiers:"17300000.00", cumulative_copiers:349, portfolio_breakdown:[{name:"Options",percentage:72},{name:"Crypto",percentage:20},{name:"Cash",percentage:8}], top_traded:[{ticker:"SPX",name:"S&P 500 Index",avg_profit:44.2,avg_loss:-7.8,profitable_pct:74},{ticker:"BTC",name:"Bitcoin",avg_profit:38.7,avg_loss:-8.1,profitable_pct:70},{ticker:"QQQ",name:"Nasdaq ETF",avg_profit:36.1,avg_loss:-6.9,profitable_pct:72}], frequently_traded:["SPX","BTC","QQQ","ETH","TSLA","NVDA","SOL"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Thornwick Asset Management", username:"thornwickam", country:"United Kingdom", badge:"gold",
+    bio:"ThornwickAM.co.uk — Institutional-grade copy trading. FTSE + US equities. Capital preservation first.",
+    category:"stocks", trend_direction:"upward", capital:"300000", gain:"88140.00", risk:"3",
+    avg_trade_time:"2 weeks", copiers:476, trades:994, avg_profit_percent:"31.60",
+    avg_loss_percent:"3.30", total_wins:912, total_losses:82, subscribers:658, followers:0,
+    current_positions:0, expert_rating:"4.93", return_ytd:"64.10", return_2y:"307.90",
+    avg_score_7d:"9.20", profitable_weeks:"82.00", min_account_threshold:"300000.00",
+    trading_days:2640, total_trades_12m:700, max_drawdown:"4.00",
+    cumulative_earnings_copiers:"29800000.00", cumulative_copiers:528, portfolio_breakdown:[{name:"Stocks",percentage:55},{name:"Options",percentage:32},{name:"Cash",percentage:13}], top_traded:[{ticker:"AAPL",name:"Apple Inc",avg_profit:28.9,avg_loss:-3.4,profitable_pct:85},{ticker:"AMZN",name:"Amazon.com Inc",avg_profit:24.6,avg_loss:-3.1,profitable_pct:83},{ticker:"MSFT",name:"Microsoft Corp",avg_profit:22.3,avg_loss:-2.9,profitable_pct:86}], frequently_traded:["AAPL","AMZN","MSFT","GOOG","V","BRK.B","JNJ"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Vega Storm Capital", username:"vegastorm", country:"Other", badge:"gold",
+    bio:"VegaStorm.ae — High-conviction options flow trader. Earnings + macro catalysts. Dubai based.",
+    category:"options", trend_direction:"upward", capital:"150000", gain:"103850.00", risk:"5",
+    avg_trade_time:"3 days", copiers:524, trades:1098, avg_profit_percent:"37.40",
+    avg_loss_percent:"5.80", total_wins:967, total_losses:131, subscribers:718, followers:0,
+    current_positions:0, expert_rating:"4.90", return_ytd:"70.30", return_2y:"339.70",
+    avg_score_7d:"9.40", profitable_weeks:"76.00", min_account_threshold:"150000.00",
+    trading_days:2310, total_trades_12m:760, max_drawdown:"7.10",
+    cumulative_earnings_copiers:"32600000.00", cumulative_copiers:579, portfolio_breakdown:[{name:"Options",percentage:66},{name:"Crypto",percentage:22},{name:"Stocks",percentage:8},{name:"Cash",percentage:4}], top_traded:[{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:42.6,avg_loss:-6.2,profitable_pct:80},{ticker:"TSLA",name:"Tesla Inc",avg_profit:39.1,avg_loss:-6.7,profitable_pct:75},{ticker:"BTC",name:"Bitcoin",avg_profit:35.8,avg_loss:-5.9,profitable_pct:78}], frequently_traded:["NVDA","TSLA","BTC","SPX","ETH","AMZN","META"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Auric Systems", username:"auricsys", country:"Japan", badge:"gold",
+    bio:"AuricSystems.jp — Nikkei and US tech hybrid. Quant signals, 5-year live record. Asia and US sessions.",
+    category:"stocks", trend_direction:"upward", capital:"130000", gain:"59270.00", risk:"4",
+    avg_trade_time:"1 week", copiers:341, trades:903, avg_profit_percent:"26.80",
+    avg_loss_percent:"4.60", total_wins:807, total_losses:96, subscribers:499, followers:0,
+    current_positions:0, expert_rating:"4.82", return_ytd:"51.90", return_2y:"258.40",
+    avg_score_7d:"8.90", profitable_weeks:"71.00", min_account_threshold:"130000.00",
+    trading_days:1890, total_trades_12m:620, max_drawdown:"6.80",
+    cumulative_earnings_copiers:"16900000.00", cumulative_copiers:393, portfolio_breakdown:[{name:"Stocks",percentage:48},{name:"Options",percentage:36},{name:"Futures",percentage:10},{name:"Cash",percentage:6}], top_traded:[{ticker:"7203.T",name:"Toyota Motor",avg_profit:24.3,avg_loss:-4.9,profitable_pct:74},{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:31.7,avg_loss:-5.1,profitable_pct:77},{ticker:"SONY",name:"Sony Group",avg_profit:20.6,avg_loss:-4.2,profitable_pct:76}], frequently_traded:["NVDA","SONY","7203.T","AAPL","MSFT","TSM","ASML"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+
+  { name:"Polaris Quant", username:"polarisquant", country:"United States", badge:"gold",
+    bio:"PolarisQuant.io — Pure systematic. No discretion, no emotion. 9-year backtest, 6-year live. Top 1% platform.",
+    category:"options", trend_direction:"upward", capital:"220000", gain:"121390.00", risk:"4",
+    avg_trade_time:"3 days", copiers:561, trades:1194, avg_profit_percent:"36.70",
+    avg_loss_percent:"4.80", total_wins:1071, total_losses:123, subscribers:784, followers:0,
+    current_positions:0, expert_rating:"4.96", return_ytd:"71.80", return_2y:"374.50",
+    avg_score_7d:"9.50", profitable_weeks:"79.00", min_account_threshold:"220000.00",
+    trading_days:2502, total_trades_12m:810, max_drawdown:"5.60",
+    cumulative_earnings_copiers:"36200000.00", cumulative_copiers:618, portfolio_breakdown:[{name:"Options",percentage:63},{name:"Stocks",percentage:22},{name:"Crypto",percentage:10},{name:"Cash",percentage:5}], top_traded:[{ticker:"SPX",name:"S&P 500 Index",avg_profit:39.4,avg_loss:-5.1,profitable_pct:82},{ticker:"NVDA",name:"NVIDIA Corp",avg_profit:43.8,avg_loss:-5.4,profitable_pct:80},{ticker:"QQQ",name:"Nasdaq ETF",avg_profit:31.2,avg_loss:-4.7,profitable_pct:81}], frequently_traded:["SPX","NVDA","QQQ","AAPL","MSFT","BTC","AMZN"], tags:[], performance_data:[], monthly_performance:[], is_active:true },
+];
+
+(function() {
+  const select = document.getElementById('presetSelect');
+  if (!select) return;
+  TRADER_PRESETS.forEach(function(t, i) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = String(i + 1).padStart(2, '0') + ' · ' + t.name;
+    select.appendChild(opt);
+  });
+
+  function setVal(id, v) {
+    const el = document.getElementById(id);
+    if (el && v !== undefined) el.value = v;
+  }
+
+  document.getElementById('loadPresetBtn').addEventListener('click', function() {
+    const idx = select.value;
+    if (idx === '') { alert('Please select a preset trader first.'); return; }
+    const t = TRADER_PRESETS[parseInt(idx, 10)];
+
+    setVal('id_name', t.name);
+    setVal('id_username', t.username);
+    setVal('id_country', t.country);
+    setVal('id_badge', t.badge);
+    setVal('id_bio', t.bio);
+    setVal('id_category', t.category);
+    setVal('id_trend_direction', t.trend_direction);
+    setVal('id_capital', t.capital);
+    setVal('id_gain', t.gain);
+    setVal('id_risk', t.risk);
+    setVal('id_avg_trade_time', t.avg_trade_time);
+    setVal('id_copiers', t.copiers);
+    setVal('id_trades', t.trades);
+    setVal('id_avg_profit_percent', t.avg_profit_percent);
+    setVal('id_avg_loss_percent', t.avg_loss_percent);
+    setVal('id_total_wins', t.total_wins);
+    setVal('id_total_losses', t.total_losses);
+    setVal('id_subscribers', t.subscribers);
+    setVal('id_followers', t.followers);
+    setVal('id_current_positions', t.current_positions);
+    setVal('id_expert_rating', t.expert_rating);
+    setVal('id_return_ytd', t.return_ytd);
+    setVal('id_return_2y', t.return_2y);
+    setVal('id_avg_score_7d', t.avg_score_7d);
+    setVal('id_profitable_weeks', t.profitable_weeks);
+    setVal('id_min_account_threshold', t.min_account_threshold);
+    setVal('id_trading_days', t.trading_days);
+    setVal('id_total_trades_12m', t.total_trades_12m);
+    setVal('id_max_drawdown', t.max_drawdown);
+    setVal('id_cumulative_earnings_copiers', t.cumulative_earnings_copiers);
+    setVal('id_cumulative_copiers', t.cumulative_copiers);
+
+    const activeEl = document.getElementById('id_is_active');
+    if (activeEl) activeEl.checked = !!t.is_active;
+
+    // — JSON builder fields (re-init each visual builder with preset data) —
+    reInitJsonBuilder('id_tags',                initTagsBuilder,             t.tags);
+    reInitJsonBuilder('id_portfolio_breakdown',  initPortfolioBuilder,        t.portfolio_breakdown);
+    reInitJsonBuilder('id_top_traded',           initTopTradedBuilder,        t.top_traded);
+    reInitJsonBuilder('id_performance_data',     function(id){ initPerformanceBuilder(id, false); }, t.performance_data);
+    reInitJsonBuilder('id_monthly_performance',  function(id){ initPerformanceBuilder(id, true);  }, t.monthly_performance);
+    reInitJsonBuilder('id_frequently_traded',    initFrequentlyTradedBuilder, t.frequently_traded);
+
+    document.querySelector('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

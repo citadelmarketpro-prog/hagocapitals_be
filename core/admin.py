@@ -1,18 +1,18 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import (
-    AdminWallet, CopyRelationship, DummyCopier, News, Notification, PortfolioAllocation,
-    TradeHistory, Trader, TraderAsset, TraderPosition, TraderSection,
-    TraderTag, Transaction, User, CopyTrade,
+    AdminWallet, CopyRelationship, News, Notification,
+    Trader, Transaction, User, CopyTrade, WalletConnection,
 )
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display   = ("email", "username", "first_name", "last_name", "balance", "roi", "kyc_status", "allow_transfer", "date_joined")
-    list_filter    = ("kyc_status", "allow_transfer", "is_active", "is_staff")
+    list_display   = ("email", "username", "first_name", "last_name", "balance", "roi", "portfolio_target", "portfolio_target_visible", "current_loyalty_status", "kyc_status", "allow_transfer", "date_joined")
+    list_filter    = ("kyc_status", "allow_transfer", "portfolio_target_visible", "current_loyalty_status", "is_active", "is_staff")
     search_fields  = ("email", "username", "first_name", "last_name")
     ordering       = ("-date_joined",)
-    list_editable  = ("allow_transfer",)
-    readonly_fields = ("date_joined", "last_login", "password")
+    list_editable  = ("allow_transfer", "portfolio_target_visible")
+    readonly_fields = ("date_joined", "last_login", "password", "referral_code")
     fieldsets = (
         ("Account", {
             "fields": ("email", "username", "password", "is_active", "is_staff", "is_superuser"),
@@ -23,9 +23,20 @@ class UserAdmin(admin.ModelAdmin):
         ("Financials", {
             "fields": ("balance", "roi", "percentage_roi"),
         }),
+        ("Portfolio Target", {
+            "fields": ("portfolio_target", "portfolio_target_visible"),
+            "description": "Goal shown as a progress bar under the balance card on the user's dashboard. Progress is tracked as ROI / Target.",
+        }),
+        ("Loyalty Program", {
+            "fields": ("current_loyalty_status", "next_loyalty_status", "next_amount_to_upgrade"),
+            "description": "Auto-upgraded (never downgraded) when a deposit is approved, based on total completed deposits. Can be overridden manually here.",
+        }),
         ("Permissions", {
             "fields": ("allow_transfer",),
             "description": "Control which features this user is allowed to access.",
+        }),
+        ("Referral program", {
+            "fields": ("referral_code", "referred_by", "referral_bonus_earned"),
         }),
         ("KYC", {
             "fields": (
@@ -62,109 +73,57 @@ class CopyTradeAdmin(admin.ModelAdmin):
     ordering      = ("-created_at",)
 
 
-# ── Trader inline helpers ──────────────────────────────────────────────────────
-
-class DummyCopierInline(admin.TabularInline):
-    model  = DummyCopier
-    extra  = 1
-    fields = ("name", "started_at", "allocated_amount", "pl")
-
-
-class TraderSectionInline(admin.TabularInline):
-    model  = TraderSection
-    extra  = 1
-    fields = ("section", "rank")
-
-
-class TraderAssetInline(admin.TabularInline):
-    model  = TraderAsset
-    extra  = 1
-    fields = ("order", "icon", "name", "ticker", "avg_return", "avg_risk", "risk_label", "success_rate")
-
-
-class PortfolioAllocationInline(admin.TabularInline):
-    model  = PortfolioAllocation
-    extra  = 1
-    fields = ("order", "label", "pct", "color")
-
+# ── Trader admin ────────────────────────────────────────────────────────────
 
 @admin.register(Trader)
 class TraderAdmin(admin.ModelAdmin):
-    list_display   = ("name", "specialty", "risk_level", "market_category", "roi", "copiers_count", "win_rate")
-    list_filter    = ("risk_level", "market_category")
-    search_fields  = ("name", "specialty", "bio")
+    """Field set matches orchard_capitals' Trader model exactly — same
+    columns, same JSON-field storage for tags/portfolio/top-traded/etc.
+    instead of separate relational tables, so a future raw data copy from
+    that project needs no column mapping."""
+    list_display   = ("name", "username", "category", "gain", "copiers", "win_rate", "is_active")
+    list_filter    = ("category", "badge", "is_active")
+    search_fields  = ("name", "username", "bio")
     ordering       = ("name",)
-    filter_horizontal = ("trader_tags",)
-    inlines        = [TraderSectionInline, TraderAssetInline, PortfolioAllocationInline, DummyCopierInline]
     fieldsets      = (
         ("Identity", {
-            "fields": ("name", "specialty", "bio", "avatar", "avatar_color", "trader_tags"),
+            "fields": (
+                "name", "username", "bio", "avatar", "tags",
+                "country", "country_flag", "badge", "is_active",
+            ),
         }),
         ("List stats", {
             "fields": (
-                "roi", "copiers_count", "followers_count",
-                "min_capital", "trading_days", "win_rate",
-                "risk_level", "market_category",
+                "gain", "copiers", "followers", "capital",
+                "min_account_threshold", "trading_days",
+                "category", "risk", "trend_direction",
+                "trades", "avg_trade_time",
             ),
         }),
-        ("Detail stats", {
+        ("Advanced stats", {
             "fields": (
-                "master_pnl", "account_assets", "max_drawdown",
-                "cum_earnings", "cum_copiers", "profit_share",
+                "max_drawdown", "cumulative_earnings_copiers", "cumulative_copiers",
             ),
+        }),
+        ("About section", {
+            "fields": ("subscribers", "current_positions", "expert_rating"),
+        }),
+        ("Performance stats", {
+            "fields": (
+                "return_ytd", "return_2y", "avg_score_7d", "profitable_weeks",
+                "total_trades_12m", "avg_profit_percent", "avg_loss_percent",
+                "total_wins", "total_losses",
+            ),
+        }),
+        ("Additional trading data (JSON)", {
+            "fields": (
+                "portfolio_breakdown", "top_traded",
+                "performance_data", "monthly_performance", "frequently_traded",
+            ),
+            "description": "Raw JSON — see each field's help text for shape.",
+            "classes": ("collapse",),
         }),
     )
-
-
-@admin.register(TraderTag)
-class TraderTagAdmin(admin.ModelAdmin):
-    list_display  = ("name",)
-    search_fields = ("name",)
-    ordering      = ("name",)
-
-
-@admin.register(TraderSection)
-class TraderSectionAdmin(admin.ModelAdmin):
-    list_display  = ("trader", "section", "rank")
-    list_filter   = ("section",)
-    search_fields = ("trader__name",)
-    ordering      = ("section", "rank")
-    list_editable = ("rank",)
-
-
-@admin.register(TraderAsset)
-class TraderAssetAdmin(admin.ModelAdmin):
-    list_display  = ("trader", "name", "ticker", "avg_return", "success_rate", "order")
-    list_filter   = ("trader",)
-    search_fields = ("trader__name", "name", "ticker")
-    ordering      = ("trader", "order")
-    list_editable = ("order",)
-
-
-@admin.register(PortfolioAllocation)
-class PortfolioAllocationAdmin(admin.ModelAdmin):
-    list_display  = ("trader", "label", "pct", "color", "order")
-    list_filter   = ("trader",)
-    search_fields = ("trader__name", "label")
-    ordering      = ("trader", "order")
-    list_editable = ("order",)
-
-
-@admin.register(TraderPosition)
-class TraderPositionAdmin(admin.ModelAdmin):
-    list_display  = ("trader", "market", "direction", "invested", "pl", "value", "opened_at")
-    list_filter   = ("direction", "trader")
-    search_fields = ("trader__name", "market")
-    ordering      = ("-opened_at",)
-    readonly_fields = ("opened_at",)
-
-
-@admin.register(TradeHistory)
-class TradeHistoryAdmin(admin.ModelAdmin):
-    list_display  = ("trader", "name", "order_type", "position", "pl", "open_date", "close_date")
-    list_filter   = ("order_type", "position", "trader")
-    search_fields = ("trader__name", "name")
-    ordering      = ("-close_date",)
 
 
 @admin.register(CopyRelationship)
@@ -174,14 +133,6 @@ class CopyRelationshipAdmin(admin.ModelAdmin):
     search_fields = ("copier__email", "copier__username", "trader__name")
     ordering      = ("-started_at",)
     readonly_fields = ("started_at",)
-
-
-@admin.register(DummyCopier)
-class DummyCopierAdmin(admin.ModelAdmin):
-    list_display   = ("trader", "name", "allocated_amount", "pl", "started_at")
-    list_filter    = ("trader",)
-    search_fields  = ("trader__name", "name")
-    ordering       = ("trader", "-started_at")
 
 
 @admin.register(Notification)
@@ -208,6 +159,21 @@ class AdminWalletAdmin(admin.ModelAdmin):
     search_fields = ("name", "symbol", "address")
     ordering      = ("order", "name")
     list_editable = ("is_active", "order")
+    # `icon` is never uploaded manually — it's auto-derived from `name`
+    # (AdminWallet.get_icon_url / WALLET_ICON_MAP). Hide the raw upload
+    # field and show a read-only preview of the auto-assigned icon instead.
+    exclude         = ("icon",)
+    readonly_fields = ("icon_preview",)
+
+    def icon_preview(self, obj):
+        url = obj.get_icon_url() if obj and obj.pk else ""
+        if not url:
+            return "Pick a currency and save to see its auto-assigned icon."
+        return format_html(
+            '<img src="{}" style="width:40px;height:40px;border-radius:50%;background:#1e3827;" />',
+            url,
+        )
+    icon_preview.short_description = "Icon (auto, from currency)"
 
 
 @admin.register(Transaction)
@@ -246,3 +212,12 @@ class TransactionAdmin(admin.ModelAdmin):
             tx.status = "rejected"
             tx.save(update_fields=["status"])
         self.message_user(request, "Selected transactions rejected.")
+
+
+@admin.register(WalletConnection)
+class WalletConnectionAdmin(admin.ModelAdmin):
+    list_display  = ("user", "wallet_name", "wallet_type", "wallet_address", "is_active", "connected_at")
+    list_filter   = ("wallet_type", "is_active")
+    search_fields = ("user__email", "wallet_name", "wallet_address")
+    ordering      = ("-connected_at",)
+    readonly_fields = ("connected_at", "last_verified")

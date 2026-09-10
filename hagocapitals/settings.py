@@ -16,6 +16,12 @@ DEBUG = config("DEBUG", default=True, cast=bool)
 
 ALLOWED_HOSTS = ["*"]
 
+# Behind nginx, gunicorn only ever sees plain HTTP — without this, Django
+# thinks every request is insecure (request.is_secure() == False) even over
+# HTTPS, which silently breaks CSRF_COOKIE_SECURE / SESSION_COOKIE_SECURE
+# (both True when DEBUG=False) and admin/panel logins in production.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Applications
 # ─────────────────────────────────────────────────────────────────────────────
@@ -93,11 +99,19 @@ APPEND_SLASH = False
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
-        conn_max_age=600,
-        # Neon's pooler can silently drop a pooled connection Django is still
-        # holding onto (conn_max_age=600 reuses it across requests). Without
-        # this, the next query on a dropped connection raises
-        # "server closed the connection unexpectedly" instead of reconnecting.
+        # DATABASE_URL now points at Supabase's Supavisor pooler in *session*
+        # mode, which dedicates one real Postgres backend per client and caps
+        # the total at 15 (EMAXCONNSESSION). That pooling model is meant for a
+        # small number of long-lived clients, not many short-lived ones — the
+        # opposite of Neon's pooler, which this conn_max_age was originally
+        # tuned for. Reusing connections for 600s per thread let Django's
+        # threaded dev server (and any concurrent workers) accumulate more
+        # held connections than the pool allows. conn_max_age=0 closes the
+        # connection at the end of every request instead, so nothing lingers
+        # against the 15-client cap. If persistent connections are wanted
+        # later, point DATABASE_URL at Supabase's *transaction*-mode pooler
+        # (port 6543) instead of raising this back up against session mode.
+        conn_max_age=0,
         conn_health_checks=True,
     )
 }
@@ -153,7 +167,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://111.90.150.215",
+    "http://111.90.143.34",
     "https://hagocapitals.com",
     "https://www.hagocapitals.com",
 ]
@@ -166,7 +180,7 @@ CORS_ALLOW_CREDENTIALS = True   # required so the browser sends cookies cross-or
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://111.90.150.215",
+    "http://111.90.143.34",
     "https://hagocapitals.com",
     "https://www.hagocapitals.com",
 ]

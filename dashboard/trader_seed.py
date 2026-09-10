@@ -1,38 +1,29 @@
 """
 Random-but-plausible demo data for freshly created traders.
 
-Auto-seeds the child tables shown on the trader detail page — Top Assets,
-Portfolio Allocation, Open Positions, Trade History — with a handful of rows
-each, spread across recent (this month / last month / two months ago) dates,
-plus fills in any Trader-level summary stat still at its default (0) so the
-profile doesn't look empty. Everything created here is a normal row
-afterwards: editable and deletable exactly like data an admin added by hand.
+Auto-fills the Trader's own JSON fields — top_traded, portfolio_breakdown,
+frequently_traded — with a handful of realistic entries, plus fills in any
+Trader-level summary stat still at its default (0) so the profile doesn't
+look empty. Everything created here lives directly on the Trader row
+afterwards: editable exactly like data an admin typed in by hand (these are
+plain JSON fields matching orchard_capitals' Trader model, not separate
+relational tables).
 
 Data sources:
-- Top Assets: live quotes from the FMP API (real symbol, name, % change)
+- Top Traded: live quotes from the FMP API (real symbol, name, % change)
   when reachable, falling back to the local JSON pool otherwise.
-- Portfolio Allocation / Open Positions / Trade History: drawn from a JSON
-  pool of realistic instruments (dashboard/trader_seed_data.json) rather than
-  fully arbitrary numbers, so combinations look like real market data and
-  differ from trader to trader.
-
-The "Copiers" tab on the frontend is backed by `DummyCopier` — a display-only
-model with no link to real accounts (just a free-text name) — NOT the real
-`CopyRelationship` table, which represents actual users who chose to copy a
-trader and is never touched here.
+- Portfolio Breakdown / Frequently Traded: drawn from a JSON pool of
+  realistic instruments (dashboard/trader_seed_data.json) rather than fully
+  arbitrary numbers, so combinations look like real market data and differ
+  from trader to trader.
 """
 
-import json
 import random
 import time
-from datetime import timedelta
+import json
 from pathlib import Path
 
 import requests
-from django.db.models import Max
-from django.utils import timezone
-
-from core.models import DummyCopier, PortfolioAllocation, TraderAsset, TraderPosition, TradeHistory, TraderSection
 
 _DATA_PATH = Path(__file__).resolve().parent / "trader_seed_data.json"
 _data_cache = None
@@ -48,27 +39,13 @@ def _seed_data() -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Recent-date helper — "this month / last month / two months ago"
+# Top Traded — live FMP quotes, falling back to the JSON pool
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _recent_datetime(now=None):
-    """A random datetime that recently 'happened' — spread across three
-    buckets (this month, last month, two months ago) so a set of rows don't
-    all cluster on the same day."""
-    now = now or timezone.now()
-    bucket = random.choice([0, 1, 2])  # 0=this month, 1=last month, 2=two months ago
-    dt = now - timedelta(days=bucket * 30 + random.randint(0, 29), hours=random.randint(0, 23), minutes=random.randint(0, 59))
-    return min(dt, now)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Top Assets — live FMP quotes, falling back to the JSON pool
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Deliberately wide candidate pools — every trader picks a random 6 out of ~75
-# symbols here (plus another ~75 in the JSON fallback pool below), so Top
-# Assets actually differ trader to trader instead of converging on the same
-# handful of big names.
+# Deliberately wide candidate pools — every trader picks a random handful out
+# of ~75 symbols here (plus another ~75 in the JSON fallback pool below), so
+# Top Traded actually differs trader to trader instead of converging on the
+# same handful of big names.
 _FMP_CRYPTO_SYMBOLS = [
     "BTCUSD", "ETHUSD", "SOLUSD", "BNBUSD", "XRPUSD", "ADAUSD", "DOGEUSD", "DOTUSD",
     "AVAXUSD", "MATICUSD", "LTCUSD", "LINKUSD", "UNIUSD", "ATOMUSD", "TRXUSD",
@@ -92,6 +69,7 @@ _FMP_STOCK_SYMBOLS = [
 
 
 def _fmp_asset_row(quote: dict) -> dict | None:
+    """orchard_capitals' top_traded item shape: {name, ticker, avg_profit, avg_loss, profitable_pct}."""
     change = quote.get("changePercentage")
     symbol = quote.get("symbol")
     if change is None or not symbol:
@@ -99,15 +77,15 @@ def _fmp_asset_row(quote: dict) -> dict | None:
     change = round(float(change), 2)
     ticker = symbol[:-3] if symbol.endswith("USD") and symbol not in ("EURUSD", "GBPUSD", "USDJPY") else symbol
     return {
-        "name":         quote.get("name") or ticker,
-        "ticker":       ticker,
-        "avg_return":   change,
-        "avg_risk":     round(abs(change) * random.uniform(0.6, 2.0) + random.uniform(0.5, 3), 2),
-        "success_rate": round(min(97, max(42, 68 + change * 2.2)), 2),
+        "name":           quote.get("name") or ticker,
+        "ticker":         ticker,
+        "avg_profit":     abs(change) if change >= 0 else round(abs(change) * random.uniform(0.6, 1.2), 2),
+        "avg_loss":       -round(abs(change) * random.uniform(0.6, 2.0) + random.uniform(0.5, 3), 2),
+        "profitable_pct": round(min(97, max(42, 68 + change * 2.2)), 2),
     }
 
 
-def _fetch_fmp_top_assets(n: int, time_budget: float = 6.0) -> list[dict]:
+def _fetch_fmp_top_traded(n: int, time_budget: float = 6.0) -> list[dict]:
     """Best-effort: fetch up to `n` real quotes from FMP one symbol at a time
     (the current plan doesn't support batched multi-symbol quotes). Returns
     fewer than `n` — or an empty list — if FMP is slow/unreachable/rate-limited;
@@ -136,10 +114,10 @@ def _fetch_fmp_top_assets(n: int, time_budget: float = 6.0) -> list[dict]:
     return rows
 
 
-def _top_assets(n: int) -> list[dict]:
+def _top_traded(n: int) -> list[dict]:
     rows = []
     try:
-        rows = _fetch_fmp_top_assets(n)
+        rows = _fetch_fmp_top_traded(n)
     except Exception:
         rows = []
 
@@ -150,15 +128,15 @@ def _top_assets(n: int) -> list[dict]:
         for a in pool[: n - len(rows)]:
             rows.append({
                 "name": a["name"], "ticker": a["ticker"],
-                "avg_return":   round(random.uniform(-15, 45), 2),
-                "avg_risk":     round(random.uniform(1, 9), 2),
-                "success_rate": round(random.uniform(45, 96), 2),
+                "avg_profit":     round(random.uniform(5, 45), 2),
+                "avg_loss":       -round(random.uniform(1, 15), 2),
+                "profitable_pct": round(random.uniform(45, 96), 2),
             })
     return rows[:n]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Percentage split helper (Portfolio Allocation always sums to 100)
+# Percentage split helper (Portfolio Breakdown always sums to 100)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _split_percentages(n: int, total: int = 100) -> list[int]:
@@ -168,127 +146,50 @@ def _split_percentages(n: int, total: int = 100) -> list[int]:
     return [cuts[0]] + [cuts[i] - cuts[i - 1] for i in range(1, len(cuts))] + [total - cuts[-1]]
 
 
-def random_portfolio_allocation_rows(n: int = 6) -> list[dict]:
-    """Public helper — also used to reseed allocations from the edit page."""
-    pool   = _seed_data()["allocation_pool"]
-    picks  = random.sample(pool, min(n, len(pool)))
-    pcts   = _split_percentages(len(picks))
-    return [
-        {"label": p["label"], "pct": pct, "color": p["color"], "order": i}
-        for i, (p, pct) in enumerate(zip(picks, pcts))
-    ]
-
-
-def random_dummy_copier_rows(n: int = 6) -> list[dict]:
-    """Public helper — display-only fake copiers (DummyCopier), safe to
-    regenerate any time since they carry no link to real user accounts."""
-    names = random.sample(_seed_data()["copier_names"], min(n, len(_seed_data()["copier_names"])))
-    now   = timezone.now()
-    rows  = []
-    for name in names:
-        allocated = round(random.uniform(500, 25000), 2)
-        rows.append({
-            "name": name,
-            "started_at": _recent_datetime(now),
-            "allocated_amount": allocated,
-            "pl": round(allocated * random.uniform(-0.15, 0.35), 2),
-        })
-    return rows
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Default section — makes a new trader visible on the public "Traders" list
-# ─────────────────────────────────────────────────────────────────────────────
-
-def assign_default_section(trader, section: str = "rising_stars") -> None:
-    """Add the trader to `section` (append at the end) if it isn't already in
-    any section — new traders otherwise never show up on the public list."""
-    if trader.section_memberships.exists():
-        return
-    next_rank = (TraderSection.objects.filter(section=section).aggregate(m=Max("rank"))["m"] or 0) + 1
-    TraderSection.objects.create(trader=trader, section=section, rank=next_rank)
+def random_portfolio_breakdown_rows(n: int = 4) -> list[dict]:
+    """Public helper — orchard_capitals' portfolio_breakdown item shape: {name, percentage}."""
+    pool  = _seed_data()["allocation_pool"]
+    picks = random.sample(pool, min(n, len(pool)))
+    pcts  = _split_percentages(len(picks))
+    return [{"name": p["label"], "percentage": pct} for p, pct in zip(picks, pcts)]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Main entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
-def seed_trader_demo_data(trader, rows: int = 6, seed_allocations: bool = True, seed_copiers: bool = True) -> None:
-    """Populate Top Assets, Open Positions, Trade History and (Dummy) Copiers
-    with `rows` random rows each (and Portfolio Allocation too, unless
-    `seed_allocations=False`), plus fill any Trader-level summary stat still
-    at its default (0)."""
+def seed_trader_demo_data(trader, rows: int = 6) -> None:
+    """Fill top_traded / portfolio_breakdown / frequently_traded with `rows`
+    random entries each, plus any Trader-level summary stat still at its
+    default (0) — only touches fields the admin left untouched."""
     data = _seed_data()
-    now  = timezone.now()
 
-    # ── Top Assets (FMP-backed) ──
-    TraderAsset.objects.bulk_create([
-        TraderAsset(trader=trader, order=i, **row)
-        for i, row in enumerate(_top_assets(rows))
-    ])
-
-    # ── Portfolio Allocation ──
-    if seed_allocations:
-        PortfolioAllocation.objects.bulk_create([
-            PortfolioAllocation(trader=trader, **row)
-            for row in random_portfolio_allocation_rows(rows)
-        ])
-
-    # ── Open Positions ── (opened_at now spreads across recent months)
-    position_assets = random.sample(data["asset_pool"], min(rows, len(data["asset_pool"])))
-    TraderPosition.objects.bulk_create([
-        TraderPosition(
-            trader=trader, market=a["ticker"],
-            direction=random.choice(data["directions"]),
-            invested=round(random.uniform(4, 28), 2),
-            pl=round(random.uniform(-12, 30), 2),
-            value=round(random.uniform(4, 32), 2),
-            sell_price=round(random.uniform(10, 45000), 2),
-            buy_price=round(random.uniform(10, 45000), 2),
-            opened_at=_recent_datetime(now),
-        )
-        for a in position_assets
-    ])
-
-    # ── Trade History ── (open/close dates spread across recent months)
-    history_assets = random.sample(data["asset_pool"], min(rows, len(data["asset_pool"])))
-    history_rows = []
-    for a in history_assets:
-        open_dt     = _recent_datetime(now)
-        close_dt    = min(open_dt + timedelta(hours=random.randint(2, 96)), now)
-        open_price  = round(random.uniform(10, 45000), 2)
-        close_price = round(open_price * random.uniform(0.85, 1.25), 2)
-        history_rows.append(TradeHistory(
-            trader=trader, name=f"{a['name']} ({a['ticker']})",
-            order_type=random.choice(data["order_types"]),
-            position=random.choice(data["trade_positions"]),
-            open_price=open_price, open_date=open_dt,
-            close_price=close_price, close_date=close_dt,
-            pl=round(random.uniform(-20, 35), 2),
-        ))
-    TradeHistory.objects.bulk_create(history_rows)
-
-    # ── Demo Copiers (DummyCopier — display-only, no link to real accounts) ──
-    if seed_copiers:
-        DummyCopier.objects.bulk_create([
-            DummyCopier(trader=trader, **row)
-            for row in random_dummy_copier_rows(rows)
-        ])
-
-    # ── Trader-level summary stats — only fill what the admin left at 0 ──
     updates = {}
-    if trader.roi == 0:             updates["roi"]             = round(random.uniform(5, 65), 2)
-    if trader.win_rate == 0:        updates["win_rate"]        = round(random.uniform(50, 92), 2)
-    if trader.copiers_count == 0:   updates["copiers_count"]   = random.randint(20, 2500)
-    if trader.followers_count == 0: updates["followers_count"] = random.randint(50, 5000)
-    if trader.min_capital == 0:     updates["min_capital"]     = random.choice([50, 100, 250, 500, 1000])
-    if trader.trading_days == 0:    updates["trading_days"]    = random.randint(60, 900)
-    if trader.master_pnl == 0:      updates["master_pnl"]      = round(random.uniform(500, 85000), 2)
-    if trader.account_assets == 0:  updates["account_assets"]  = round(random.uniform(2000, 250000), 2)
-    if trader.max_drawdown == 0:    updates["max_drawdown"]    = round(random.uniform(3, 22), 2)
-    if trader.cum_earnings == 0:    updates["cum_earnings"]    = round(random.uniform(500, 90000), 2)
-    if trader.cum_copiers == 0:     updates["cum_copiers"]     = random.randint(20, 2500)
-    if trader.profit_share == 0:    updates["profit_share"]    = random.choice([10, 15, 20, 25, 30])
+    if not trader.top_traded:
+        updates["top_traded"] = _top_traded(rows)
+    if not trader.portfolio_breakdown:
+        updates["portfolio_breakdown"] = random_portfolio_breakdown_rows(min(rows, 4))
+    if not trader.frequently_traded:
+        pool = random.sample(data["asset_pool"], min(rows, len(data["asset_pool"])))
+        updates["frequently_traded"] = [a["ticker"] for a in pool]
+
+    if trader.gain == 0:                  updates["gain"]                  = round(random.uniform(5, 65), 2)
+    if trader.total_wins == 0 and trader.total_losses == 0:
+        wins   = random.randint(400, 1100)
+        losses = random.randint(40, 220)
+        updates["total_wins"]   = wins
+        updates["total_losses"] = losses
+    if trader.copiers == 0:               updates["copiers"]               = random.randint(20, 600)
+    if trader.followers == 0:             updates["followers"]             = random.randint(50, 800)
+    if trader.min_account_threshold == 0: updates["min_account_threshold"] = random.choice([50000, 75000, 100000, 150000])
+    if trader.trading_days == 0:          updates["trading_days"]          = random.randint(500, 2600)
+    if trader.max_drawdown == 0:          updates["max_drawdown"]          = round(random.uniform(3, 10), 2)
+    if trader.cumulative_earnings_copiers == 0:
+        updates["cumulative_earnings_copiers"] = round(random.uniform(10_000_000, 40_000_000), 2)
+    if trader.cumulative_copiers == 0:    updates["cumulative_copiers"]    = random.randint(280, 650)
+    if trader.trades == 0:                updates["trades"]                = random.randint(700, 1300)
+    if trader.avg_profit_percent == 0:    updates["avg_profit_percent"]    = round(random.uniform(20, 40), 2)
+    if trader.avg_loss_percent == 0:      updates["avg_loss_percent"]      = round(random.uniform(3, 7), 2)
 
     if updates:
         for field, value in updates.items():

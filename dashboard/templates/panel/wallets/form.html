@@ -10,9 +10,14 @@
       {% csrf_token %}
       <div class="mb-5">
         <label class="form-label">Currency *</label>
-        <select name="name" class="form-control" required>
-          {% for val, label in form.fields.name.choices %}<option value="{{ val }}" {% if form.name.value == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
-        </select>
+        <div class="flex items-center gap-3">
+          <img id="wallet-icon-preview" src="{% if obj %}{{ obj.get_icon_url }}{% endif %}"
+               class="w-10 h-10 rounded-full shrink-0" style="background:#1e3827; {% if not obj or not obj.get_icon_url %}display:none;{% endif %}" />
+          <select name="name" id="id_name" class="form-control" required>
+            {% for val, label in form.fields.name.choices %}<option value="{{ val }}" {% if form.name.value == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <p class="text-xs mt-1" style="color:#8fa896;">The icon shown to users is picked automatically from this — no image upload needed.</p>
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div class="mb-5">
@@ -29,9 +34,14 @@
         <input type="text" name="address" value="{{ form.address.value|default:'' }}" class="form-control" required placeholder="0x…" />
       </div>
       <div class="mb-5">
-        <label class="form-label">Icon Image</label>
-        <input type="file" name="icon" class="form-control" accept="image/*" />
-        {% if obj and obj.icon %}<p class="text-xs mt-1" style="color:#8fa896;">Current: <a href="{{ obj.icon.url }}" target="_blank" style="color:#B0D45A;">view</a></p>{% endif %}
+        <label class="form-label">QR Code Image</label>
+        <input type="file" name="qr_code" class="form-control" accept="image/*" />
+        <p class="text-xs mt-1" style="color:#8fa896;">
+          Optional — upload the wallet's official QR (from your exchange/wallet app) if it needs
+          to encode more than the raw address, such as a memo/destination tag. Leave blank and
+          the deposit page will auto-generate a QR from the address instead.
+        </p>
+        {% if obj and obj.qr_code %}<p class="text-xs mt-1" style="color:#8fa896;">Current: <a href="{{ obj.qr_code.url }}" target="_blank" style="color:#B0D45A;">view</a></p>{% endif %}
       </div>
       <div class="mb-5">
         <label class="form-label">Order</label>
@@ -50,4 +60,21 @@
     </form>
   </div>
 </div>
+
+{{ icon_map|json_script:"wallet-icon-map" }}
+<script>
+  const WALLET_ICON_MAP = JSON.parse(document.getElementById("wallet-icon-map").textContent);
+  const nameSelect = document.getElementById("id_name");
+  const preview = document.getElementById("wallet-icon-preview");
+  function updateWalletIconPreview() {
+    const url = WALLET_ICON_MAP[nameSelect.value];
+    if (url) {
+      preview.src = url;
+      preview.style.display = "";
+    } else {
+      preview.style.display = "none";
+    }
+  }
+  nameSelect.addEventListener("change", updateWalletIconPreview);
+</script>
 {% endblock %}

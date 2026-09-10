@@ -12,18 +12,18 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from core.models import (
-    AdminWallet, CopyRelationship, CopyTrade, DummyCopier, Notification, PortfolioAllocation,
-    SavedPaymentMethod, Trader, TraderAsset, TraderPosition, TradeHistory, TraderSection, TraderTag, Transaction,
+    AdminWallet, CopyRelationship, CopyTrade, Notification,
+    SavedPaymentMethod, Trader, Transaction,
 )
 from core.email_service import send_user_deposit_approved_email, send_custom_email, render_custom_email_preview
 from core.fmp_client import search_symbols
 from .decorators import superuser_required
 from .models import EmailCampaign, EmailCampaignRecipient
-from .trader_seed import seed_trader_demo_data, assign_default_section
+from .trader_seed import seed_trader_demo_data
 from .forms import (
-    AddTradeForm, AdminWalletForm, AdjustFundsForm, CustomEmailForm, DummyCopierForm, EditCopyTradeForm,
-    PortfolioAllocationForm, PortfolioAllocationFormSet, RejectKycForm, TraderAssetForm, TradeHistoryForm,
-    TraderForm, TraderPositionForm, TraderSectionForm, TraderTagForm,
+    AddTradeForm, AdminWalletForm, AdjustFundsForm, CustomEmailForm, EditCopyTradeForm,
+    RejectKycForm,
+    TraderForm,
     UserCreateForm, UserEditForm,
     ASSET_MAP, ASSET_ICON_MAP,
 )
@@ -196,30 +196,32 @@ def user_adjust_funds(request, pk):
 
 @superuser_required
 def trader_list(request):
-    qs = Trader.objects.prefetch_related("section_memberships").order_by("name")
+    qs = Trader.objects.order_by("name")
     q  = request.GET.get("q","").strip()
-    if q: qs = qs.filter(Q(name__icontains=q)|Q(specialty__icontains=q))
+    if q: qs = qs.filter(Q(name__icontains=q)|Q(username__icontains=q))
     page = Paginator(qs, 25).get_page(request.GET.get("page"))
     return render(request, "panel/traders/list.html", {"page_obj": page, "q": q})
 
 
+TRADER_COUNTRY_CHOICES = [
+    "United States", "United Kingdom", "Germany", "France", "Canada",
+    "Australia", "Singapore", "Hong Kong", "Japan", "South Korea", "India",
+    "Brazil", "Mexico", "Netherlands", "Switzerland", "Sweden", "Norway",
+    "Denmark", "Spain", "Italy", "Other",
+]
+
+
 @superuser_required
 def trader_create(request):
-    form          = TraderForm(request.POST or None, request.FILES or None)
-    allocation_fs = PortfolioAllocationFormSet(request.POST or None, prefix="alloc")
-    if form.is_valid() and allocation_fs.is_valid():
+    form = TraderForm(request.POST or None, request.FILES or None)
+    if form.is_valid():
         trader = form.save()
-        allocation_fs.instance = trader
-        allocation_fs.save()
-        # Portfolio Allocation is the one section the admin can set by hand right
-        # here — everything else (assets/positions/history/copiers) is always
-        # auto-generated so the trader isn't left empty.
-        seed_trader_demo_data(trader, seed_allocations=False)
-        assign_default_section(trader)
-        messages.success(request, f"Trader '{trader.name}' created with sample portfolio data — edit or remove any of it from the trader's page.")
+        seed_trader_demo_data(trader)
+        messages.success(request, f"Trader '{trader.name}' created — edit any of its detail-page data from this page.")
         return redirect("panel:trader_detail", pk=trader.pk)
     return render(request, "panel/traders/form.html", {
-        "form": form, "action": "Create", "allocation_fs": allocation_fs,
+        "form": form, "action": "Create",
+        "country_choices": TRADER_COUNTRY_CHOICES,
     })
 
 
@@ -228,34 +230,25 @@ def trader_detail(request, pk):
     t = get_object_or_404(Trader, pk=pk)
     all_rels       = CopyRelationship.objects.filter(trader=t).select_related("copier")
     active_copiers = all_rels.filter(status="active")
-    dummy_copiers  = t.dummy_copiers.all()
     return render(request, "panel/traders/detail.html", {
         "obj":                t,
-        "sections":           t.section_memberships.all(),
-        "assets":             t.trader_assets.all(),
-        "allocs":             t.portfolio_allocations.all(),
         "copiers":            active_copiers,
         "cancel_requests":    all_rels.filter(status="cancel_requested"),
-        "tags":               t.trader_tags.all(),
-        "positions":          t.positions.all(),
-        "history":            t.trade_history.all(),
-        "dummy_copiers":      dummy_copiers,
-        "total_copiers_count": active_copiers.count() + dummy_copiers.count(),
+        "total_copiers_count": active_copiers.count(),
     })
 
 
 @superuser_required
 def trader_edit(request, pk):
-    trader        = get_object_or_404(Trader, pk=pk)
-    form          = TraderForm(request.POST or None, request.FILES or None, instance=trader)
-    allocation_fs = PortfolioAllocationFormSet(request.POST or None, instance=trader, prefix="alloc")
-    if form.is_valid() and allocation_fs.is_valid():
+    trader = get_object_or_404(Trader, pk=pk)
+    form   = TraderForm(request.POST or None, request.FILES or None, instance=trader)
+    if form.is_valid():
         form.save()
-        allocation_fs.save()
         messages.success(request, "Trader updated.")
         return redirect("panel:trader_detail", pk=pk)
     return render(request, "panel/traders/form.html", {
-        "form": form, "obj": trader, "action": "Edit", "allocation_fs": allocation_fs,
+        "form": form, "obj": trader, "action": "Edit",
+        "country_choices": TRADER_COUNTRY_CHOICES,
     })
 
 
@@ -270,7 +263,7 @@ def trader_delete(request, pk):
     return render(request, "panel/confirm_delete.html", {
         "title": "Delete trader?",
         "subtitle": trader.name,
-        "warning": "All related data (positions, history, copiers) will be permanently removed.",
+        "warning": "All related data (copiers) will be permanently removed.",
         "cancel_url": f"/panel/traders/{pk}/",
     })
 
@@ -282,197 +275,6 @@ def trader_disconnect_copier(request, pk, copier_pk):
     email = rel.copier.email
     rel.delete()
     messages.success(request, f"Disconnected {email} from trader.")
-    return redirect("panel:trader_detail", pk=pk)
-
-
-@superuser_required
-def trader_add_section(request, pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    form   = TraderSectionForm(request.POST or None)
-    if form.is_valid():
-        sec = form.save(commit=False)
-        sec.trader = trader
-        sec.save()
-        messages.success(request, "Section added.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/section_form.html", {"form": form, "obj": trader})
-
-
-@superuser_required
-@require_POST
-def trader_remove_section(request, pk, section_pk):
-    get_object_or_404(TraderSection, pk=section_pk, trader_id=pk).delete()
-    messages.success(request, "Section removed.")
-    return redirect("panel:trader_detail", pk=pk)
-
-
-@superuser_required
-def trader_add_asset(request, pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    form   = TraderAssetForm(request.POST or None)
-    if form.is_valid():
-        a = form.save(commit=False)
-        a.trader = trader
-        a.save()
-        messages.success(request, "Asset added.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/asset_form.html", {"form": form, "obj": trader})
-
-
-@superuser_required
-def trader_add_allocation(request, pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    form   = PortfolioAllocationForm(request.POST or None)
-    if form.is_valid():
-        a = form.save(commit=False)
-        a.trader = trader
-        a.save()
-        messages.success(request, "Allocation added.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/allocation_form.html", {"form": form, "obj": trader})
-
-
-@superuser_required
-def trader_edit_asset(request, pk, asset_pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    asset  = get_object_or_404(TraderAsset, pk=asset_pk, trader=trader)
-    form   = TraderAssetForm(request.POST or None, request.FILES or None, instance=asset)
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Asset updated.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/asset_form.html", {"form": form, "obj": trader, "editing": True})
-
-
-@superuser_required
-@require_POST
-def trader_delete_asset(request, pk, asset_pk):
-    asset = get_object_or_404(TraderAsset, pk=asset_pk, trader_id=pk)
-    asset.delete()
-    messages.success(request, "Asset deleted.")
-    return redirect("panel:trader_detail", pk=pk)
-
-
-@superuser_required
-def trader_edit_allocation(request, pk, alloc_pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    alloc  = get_object_or_404(PortfolioAllocation, pk=alloc_pk, trader=trader)
-    form   = PortfolioAllocationForm(request.POST or None, instance=alloc)
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Allocation updated.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/allocation_form.html", {"form": form, "obj": trader, "editing": True})
-
-
-@superuser_required
-@require_POST
-def trader_delete_allocation(request, pk, alloc_pk):
-    alloc = get_object_or_404(PortfolioAllocation, pk=alloc_pk, trader_id=pk)
-    alloc.delete()
-    messages.success(request, "Allocation deleted.")
-    return redirect("panel:trader_detail", pk=pk)
-
-
-# ── Demo Copiers (DummyCopier — display-only, no link to real accounts) ──────
-
-@superuser_required
-def trader_add_dummy_copier(request, pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    form   = DummyCopierForm(request.POST or None)
-    if form.is_valid():
-        c = form.save(commit=False)
-        c.trader = trader
-        c.save()
-        messages.success(request, "Demo copier added.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/dummy_copier_form.html", {"form": form, "obj": trader})
-
-
-@superuser_required
-def trader_edit_dummy_copier(request, pk, copier_pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    copier = get_object_or_404(DummyCopier, pk=copier_pk, trader=trader)
-    form   = DummyCopierForm(request.POST or None, instance=copier)
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Demo copier updated.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/dummy_copier_form.html", {"form": form, "obj": trader, "editing": True})
-
-
-@superuser_required
-@require_POST
-def trader_delete_dummy_copier(request, pk, copier_pk):
-    copier = get_object_or_404(DummyCopier, pk=copier_pk, trader_id=pk)
-    copier.delete()
-    messages.success(request, "Demo copier deleted.")
-    return redirect("panel:trader_detail", pk=pk)
-
-
-@superuser_required
-def trader_add_position(request, pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    form   = TraderPositionForm(request.POST or None)
-    if form.is_valid():
-        pos = form.save(commit=False)
-        pos.trader = trader
-        pos.save()
-        messages.success(request, "Position added.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/position_form.html", {"form": form, "obj": trader, "action": "Add"})
-
-
-@superuser_required
-def trader_edit_position(request, pk, pos_pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    pos    = get_object_or_404(TraderPosition, pk=pos_pk, trader=trader)
-    form   = TraderPositionForm(request.POST or None, instance=pos)
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Position updated.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/position_form.html", {"form": form, "obj": trader, "action": "Edit"})
-
-
-@superuser_required
-@require_POST
-def trader_delete_position(request, pk, pos_pk):
-    get_object_or_404(TraderPosition, pk=pos_pk, trader_id=pk).delete()
-    messages.success(request, "Position deleted.")
-    return redirect("panel:trader_detail", pk=pk)
-
-
-@superuser_required
-def trader_add_history(request, pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    form   = TradeHistoryForm(request.POST or None)
-    if form.is_valid():
-        h = form.save(commit=False)
-        h.trader = trader
-        h.save()
-        messages.success(request, "Trade history entry added.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/history_form.html", {"form": form, "obj": trader, "action": "Add"})
-
-
-@superuser_required
-def trader_edit_history(request, pk, hist_pk):
-    trader = get_object_or_404(Trader, pk=pk)
-    hist   = get_object_or_404(TradeHistory, pk=hist_pk, trader=trader)
-    form   = TradeHistoryForm(request.POST or None, instance=hist)
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Trade history updated.")
-        return redirect("panel:trader_detail", pk=pk)
-    return render(request, "panel/traders/history_form.html", {"form": form, "obj": trader, "action": "Edit"})
-
-
-@superuser_required
-@require_POST
-def trader_delete_history(request, pk, hist_pk):
-    get_object_or_404(TradeHistory, pk=hist_pk, trader_id=pk).delete()
-    messages.success(request, "Trade history deleted.")
     return redirect("panel:trader_detail", pk=pk)
 
 
@@ -515,6 +317,7 @@ def transaction_approve(request, pk):
         Notification.objects.create(user=user, notif_type="wallet", title="Deposit Confirmed",
             body=f"Your deposit of ${tx.amount_usd:,.2f} ({tx.asset}) has been confirmed and added to your balance.")
         send_user_deposit_approved_email(user, tx)
+        user.update_loyalty_tier()
         messages.success(request, f"Deposit approved — ${tx.amount_usd:,.2f} added to {user.email}.")
     else:
         # Deduct from whichever pool the user actually chose at request time —
@@ -562,7 +365,9 @@ def wallet_create(request):
         form.save()
         messages.success(request, "Wallet added.")
         return redirect("panel:wallet_list")
-    return render(request, "panel/wallets/form.html", {"form": form, "action": "Add"})
+    return render(request, "panel/wallets/form.html", {
+        "form": form, "action": "Add", "icon_map": AdminWallet.WALLET_ICON_MAP,
+    })
 
 
 @superuser_required
@@ -573,7 +378,9 @@ def wallet_edit(request, pk):
         form.save()
         messages.success(request, "Wallet updated.")
         return redirect("panel:wallet_list")
-    return render(request, "panel/wallets/form.html", {"form": form, "action": "Edit", "obj": wallet})
+    return render(request, "panel/wallets/form.html", {
+        "form": form, "action": "Edit", "obj": wallet, "icon_map": AdminWallet.WALLET_ICON_MAP,
+    })
 
 
 @superuser_required
@@ -811,50 +618,6 @@ def copy_trade_record_delete(request, pk):
     if "bulk" in referer:
         return redirect(referer)
     return redirect("panel:investor_add_trade", user_pk=user_pk)
-
-
-# ── Tags ──────────────────────────────────────────────────────────────────────
-
-@superuser_required
-def tag_list(request):
-    tags = TraderTag.objects.annotate(trader_count=Count("traders")).order_by("name")
-    return render(request, "panel/tags/list.html", {"tags": tags})
-
-
-@superuser_required
-def tag_create(request):
-    form = TraderTagForm(request.POST or None)
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Tag created.")
-        return redirect("panel:tag_list")
-    return render(request, "panel/tags/form.html", {"form": form, "action": "Create"})
-
-
-@superuser_required
-def tag_edit(request, pk):
-    tag  = get_object_or_404(TraderTag, pk=pk)
-    form = TraderTagForm(request.POST or None, instance=tag)
-    if form.is_valid():
-        form.save()
-        messages.success(request, f"Tag '{tag.name}' updated.")
-        return redirect("panel:tag_list")
-    return render(request, "panel/tags/form.html", {"form": form, "action": "Edit", "obj": tag})
-
-
-@superuser_required
-def tag_delete(request, pk):
-    tag = get_object_or_404(TraderTag, pk=pk)
-    if request.method == "POST":
-        tag.delete()
-        messages.success(request, f"Tag '{tag.name}' deleted.")
-        return redirect("panel:tag_list")
-    return render(request, "panel/confirm_delete.html", {
-        "title": "Delete tag?",
-        "subtitle": tag.name,
-        "warning": "This tag will be removed from all traders.",
-        "cancel_url": "/panel/tags/",
-    })
 
 
 # ── Custom / bulk client emails ─────────────────────────────────────────────

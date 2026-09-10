@@ -29,23 +29,6 @@ urlpatterns = [
     path("traders/<int:pk>/edit/",                             views.trader_edit,             name="trader_edit"),
     path("traders/<int:pk>/delete/",                           views.trader_delete,           name="trader_delete"),
     path("traders/<int:pk>/copiers/<int:copier_pk>/disconnect/", views.trader_disconnect_copier, name="trader_disconnect_copier"),
-    path("traders/<int:pk>/sections/add/",                     views.trader_add_section,      name="trader_add_section"),
-    path("traders/<int:pk>/sections/<int:section_pk>/remove/", views.trader_remove_section,   name="trader_remove_section"),
-    path("traders/<int:pk>/assets/add/",                       views.trader_add_asset,        name="trader_add_asset"),
-    path("traders/<int:pk>/assets/<int:asset_pk>/edit/",       views.trader_edit_asset,       name="trader_edit_asset"),
-    path("traders/<int:pk>/assets/<int:asset_pk>/delete/",     views.trader_delete_asset,     name="trader_delete_asset"),
-    path("traders/<int:pk>/allocations/add/",                  views.trader_add_allocation,   name="trader_add_allocation"),
-    path("traders/<int:pk>/allocations/<int:alloc_pk>/edit/",  views.trader_edit_allocation,  name="trader_edit_allocation"),
-    path("traders/<int:pk>/allocations/<int:alloc_pk>/delete/",views.trader_delete_allocation,name="trader_delete_allocation"),
-    path("traders/<int:pk>/dummy-copiers/add/",                        views.trader_add_dummy_copier,    name="trader_add_dummy_copier"),
-    path("traders/<int:pk>/dummy-copiers/<int:copier_pk>/edit/",       views.trader_edit_dummy_copier,   name="trader_edit_dummy_copier"),
-    path("traders/<int:pk>/dummy-copiers/<int:copier_pk>/delete/",     views.trader_delete_dummy_copier, name="trader_delete_dummy_copier"),
-    path("traders/<int:pk>/positions/add/",                    views.trader_add_position,     name="trader_add_position"),
-    path("traders/<int:pk>/positions/<int:pos_pk>/edit/",      views.trader_edit_position,    name="trader_edit_position"),
-    path("traders/<int:pk>/positions/<int:pos_pk>/delete/",    views.trader_delete_position,  name="trader_delete_position"),
-    path("traders/<int:pk>/history/add/",                      views.trader_add_history,      name="trader_add_history"),
-    path("traders/<int:pk>/history/<int:hist_pk>/edit/",       views.trader_edit_history,     name="trader_edit_history"),
-    path("traders/<int:pk>/history/<int:hist_pk>/delete/",     views.trader_delete_history,   name="trader_delete_history"),
 
     # Transactions
     path("transactions/",                views.transaction_list,    name="transaction_list"),
@@ -58,12 +41,6 @@ urlpatterns = [
     path("wallets/create/",         views.wallet_create, name="wallet_create"),
     path("wallets/<int:pk>/edit/",  views.wallet_edit,   name="wallet_edit"),
     path("wallets/<int:pk>/delete/",views.wallet_delete, name="wallet_delete"),
-
-    # Tags
-    path("tags/",                views.tag_list,   name="tag_list"),
-    path("tags/create/",         views.tag_create, name="tag_create"),
-    path("tags/<int:pk>/edit/",  views.tag_edit,   name="tag_edit"),
-    path("tags/<int:pk>/delete/",views.tag_delete, name="tag_delete"),
 
     # Copy Trades
     path("copy-trades/",                                  views.copy_trade_list,          name="copy_trade_list"),

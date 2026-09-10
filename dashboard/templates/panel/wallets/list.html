@@ -15,8 +15,10 @@
     <tr>
       <td>
         <div class="flex items-center gap-3">
-          {% if w.icon %}<img src="{{ w.icon.url }}" class="w-7 h-7 rounded-full" />
+          {% with icon_url=w.get_icon_url %}
+          {% if icon_url %}<img src="{{ icon_url }}" class="w-7 h-7 rounded-full" style="background:#1e3827;" />
           {% else %}<div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:#1e3827; color:#B0D45A;">{{ w.symbol|first }}</div>{% endif %}
+          {% endwith %}
           <span class="font-medium" style="color:#f0f0f0;">{{ w.get_name_display }}</span>
         </div>
       </td>

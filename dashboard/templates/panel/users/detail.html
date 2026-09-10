@@ -51,6 +51,30 @@
         </div>
       </div>
 
+      <!-- Portfolio Target -->
+      <div class="rounded p-3 mb-4" style="background:#0d2016; border:1px solid #1e3827;">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] uppercase tracking-wide font-semibold" style="color:#8fa896;">Portfolio Target</p>
+          {% if obj.portfolio_target_visible %}
+            <span class="badge badge-green">Visible to user</span>
+          {% else %}
+            <span class="badge badge-gray">Hidden from user</span>
+          {% endif %}
+        </div>
+        <p class="text-sm font-bold leading-tight" style="color:#B0D45A;">${{ obj.portfolio_target|default:"50000.00"|floatformat:2|intcomma }}</p>
+        <p class="text-xs mt-1" style="color:#8fa896;"><a href="{% url 'panel:user_edit' obj.pk %}" style="color:#B0D45A;">Edit target / visibility →</a></p>
+      </div>
+
+      <!-- Loyalty Program -->
+      <div class="rounded p-3 mb-4" style="background:#0d2016; border:1px solid #1e3827;">
+        <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#8fa896;">Loyalty Tier</p>
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-bold leading-tight capitalize" style="color:#B0D45A;">{{ obj.current_loyalty_status }}</p>
+          <p class="text-xs" style="color:#8fa896;">Next: <span class="capitalize" style="color:#f0f0f0;">{{ obj.next_loyalty_status }}</span> at ${{ obj.next_amount_to_upgrade|floatformat:2|intcomma }}</p>
+        </div>
+        <p class="text-xs mt-1" style="color:#8fa896;"><a href="{% url 'panel:user_edit' obj.pk %}" style="color:#B0D45A;">Edit tier →</a></p>
+      </div>
+
       <!-- KYC status -->
       <div class="rounded p-3 mb-4" style="background:#0d2016; border:1px solid #1e3827;">
         <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:#8fa896;">KYC Status</p>

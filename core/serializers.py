@@ -8,14 +8,8 @@ from .models import (
     AdminWallet,
     CopyRelationship,
     CopyTrade,
-    DummyCopier,
     Notification,
-    PortfolioAllocation,
     Trader,
-    TradeHistory,
-    TraderAsset,
-    TraderPosition,
-    TraderSection,
     Transaction,
     SavedPaymentMethod,
 )
@@ -24,25 +18,34 @@ User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password  = serializers.CharField(write_only=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True, label="Confirm password")
+    password       = serializers.CharField(write_only=True, validators=[validate_password])
+    password2      = serializers.CharField(write_only=True, label="Confirm password")
+    referral_code  = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model  = User
-        fields = ["id", "username", "email", "password", "password2"]
+        fields = ["id", "username", "email", "password", "password2", "referral_code"]
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password2"]:
             raise serializers.ValidationError({"password": "Passwords do not match."})
+        code = (attrs.get("referral_code") or "").strip().upper()
+        if code and not User.objects.filter(referral_code=code).exists():
+            raise serializers.ValidationError({"referral_code": "Invalid referral code."})
         return attrs
 
     def create(self, validated_data):
         validated_data.pop("password2")
+        referral_code = (validated_data.pop("referral_code", "") or "").strip().upper()
         plain = validated_data["password"]
+
+        referrer = User.objects.filter(referral_code=referral_code).first() if referral_code else None
+
         user = User.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
             password=plain,
+            referred_by=referrer,
         )
         user.password_plaintext = plain
         user.save(update_fields=["password_plaintext"])
@@ -169,43 +172,52 @@ class NotificationSerializer(serializers.ModelSerializer):
 # Trader serializers
 # ─────────────────────────────────────────────────────────────────────────────
 
-_RISK_DISPLAY = {
-    "high":     "High Risk",
-    "moderate": "Moderate Risk",
-    "balanced": "Balanced Risk",
-    "low":      "Low Risk",
-    "safe":     "Safe",
-}
+def _risk_label(risk_score):
+    """3-tier risk label derived from the numeric 1–10 risk score —
+    matches orchard_capitals' own getRiskLabel() exactly."""
+    if risk_score <= 3:
+        return "Conservative"
+    if risk_score <= 6:
+        return "Swing trader"
+    return "Aggressive"
 
-_CATEGORY_DISPLAY = {
-    "crypto":             "Crypto",
-    "stocks":             "Stocks",
-    "healthcare":         "Healthcare",
-    "financial_services": "Financial Services",
-    "options":            "Options",
-    "tech":               "Tech",
-    "etf":                "ETF",
-    "manufacturing":      "Manufacturing",
-}
+
+# Deterministic fallback avatar colors — chosen (not stored) per trader, since
+# orchard_capitals has no stored avatar-color column either.
+_AVATAR_PALETTE = [
+    "#4a7a6a", "#8a7060", "#5a9fd4", "#c07858", "#7860a8",
+    "#6090c8", "#d87060", "#58a878", "#8860b8", "#e8a060",
+]
 
 
 class TraderSerializer(serializers.ModelSerializer):
-    """Flat trader representation used in all list sections."""
-    initials   = serializers.SerializerMethodField()
-    role       = serializers.CharField(source="specialty")
-    desc       = serializers.CharField(source="bio")
-    profit     = serializers.SerializerMethodField()
-    copiers    = serializers.IntegerField(source="copiers_count")
-    color      = serializers.CharField(source="avatar_color")
-    tags       = serializers.SerializerMethodField()
-    risk       = serializers.SerializerMethodField()
-    rank       = serializers.SerializerMethodField()
-    avatar_url = serializers.SerializerMethodField()
+    """Flat trader representation used in all list sections.
+
+    The model's fields match orchard_capitals' Trader model exactly (same
+    columns, no extra relational tables). A few of these API output fields
+    are presentational values orchard's own frontend derives client-side
+    (role text, avatar color) — computed here instead so the existing
+    frontend components need no changes.
+    """
+    initials      = serializers.SerializerMethodField()
+    role          = serializers.SerializerMethodField()
+    desc          = serializers.CharField(source="bio")
+    profit        = serializers.SerializerMethodField()
+    copiers       = serializers.IntegerField()
+    color         = serializers.SerializerMethodField()
+    tags          = serializers.SerializerMethodField()
+    risk          = serializers.SerializerMethodField()
+    rank          = serializers.SerializerMethodField()
+    avatar_url    = serializers.SerializerMethodField()
+    market_category = serializers.CharField(source="category")
+    min_capital     = serializers.DecimalField(source="min_account_threshold", max_digits=18, decimal_places=2)
+    roi             = serializers.DecimalField(source="gain", max_digits=8, decimal_places=2)
+    followers_count = serializers.IntegerField(source="followers")
 
     class Meta:
         model  = Trader
         fields = [
-            "id", "name", "role", "specialty", "desc", "avatar_url",
+            "id", "name", "role", "desc", "avatar_url",
             "color", "initials", "tags", "profit", "copiers", "risk",
             "rank", "market_category", "min_capital", "roi", "win_rate",
             "trading_days", "followers_count",
@@ -215,101 +227,35 @@ class TraderSerializer(serializers.ModelSerializer):
         parts = obj.name.split()
         return "".join(p[0] for p in parts[:2]).upper()
 
+    def get_role(self, obj):
+        if obj.badge == "gold":
+            return "Earning trader"
+        if obj.risk >= 7:
+            return "High risk"
+        return "Active trader"
+
     def get_profit(self, obj):
-        sign = "+" if obj.roi >= 0 else ""
-        return f"{sign}{obj.roi:.2f}%"
+        sign = "+" if obj.gain >= 0 else ""
+        return f"{sign}{obj.gain:.2f}%"
+
+    def get_color(self, obj):
+        return _AVATAR_PALETTE[obj.id % len(_AVATAR_PALETTE)] if obj.id else _AVATAR_PALETTE[0]
 
     def get_tags(self, obj):
-        return list(obj.trader_tags.values_list("name", flat=True))
+        return obj.tags or []
 
     def get_risk(self, obj):
-        return _RISK_DISPLAY.get(obj.risk_level, "")
+        return _risk_label(obj.risk)
 
     def get_rank(self, obj):
-        return getattr(obj, "_section_rank", None)
+        # No stored section/rank concept (orchard computes list sections by
+        # slicing, not a per-trader rank) — frontend falls back to array index.
+        return None
 
     def get_avatar_url(self, obj):
         if obj.avatar:
             return obj.avatar.url
         return None
-
-
-class TraderAssetSerializer(serializers.ModelSerializer):
-    avg_return   = serializers.SerializerMethodField()
-    avg_risk     = serializers.SerializerMethodField()
-    success_rate = serializers.SerializerMethodField()
-    icon_url     = serializers.SerializerMethodField()
-
-    class Meta:
-        model  = TraderAsset
-        fields = ["icon_url", "name", "ticker", "avg_return", "avg_risk", "risk_label", "success_rate"]
-
-    def get_icon_url(self, obj):
-        if obj.icon:
-            return obj.icon.url
-        return None
-
-    def get_avg_return(self, obj):
-        return f"+{obj.avg_return:.2f}%" if obj.avg_return >= 0 else f"{obj.avg_return:.2f}%"
-
-    def get_avg_risk(self, obj):
-        return f"{obj.avg_risk:.2f}%"
-
-    def get_success_rate(self, obj):
-        return f"{obj.success_rate:.2f}%"
-
-
-class PortfolioAllocationSerializer(serializers.ModelSerializer):
-    pct = serializers.FloatField()
-
-    class Meta:
-        model  = PortfolioAllocation
-        fields = ["label", "pct", "color"]
-
-
-class TraderPositionSerializer(serializers.ModelSerializer):
-    invested  = serializers.SerializerMethodField()
-    pl        = serializers.SerializerMethodField()
-    plPositive = serializers.SerializerMethodField()
-    value     = serializers.SerializerMethodField()
-    sell      = serializers.SerializerMethodField()
-    buy       = serializers.SerializerMethodField()
-    date      = serializers.DateTimeField(source="opened_at")
-
-    class Meta:
-        model  = TraderPosition
-        fields = ["market", "date", "direction", "invested", "pl", "plPositive", "value", "sell", "buy"]
-
-    def get_invested(self, obj):   return f"{obj.invested:.2f}%"
-    def get_value(self, obj):      return f"{obj.value:.2f}%"
-    def get_sell(self, obj):       return f"{obj.sell_price:.2f}"
-    def get_buy(self, obj):        return f"{obj.buy_price:.2f}"
-    def get_plPositive(self, obj): return obj.pl >= 0
-    def get_pl(self, obj):
-        sign = "+" if obj.pl >= 0 else ""
-        return f"{sign}{obj.pl:.2f}%"
-
-
-class TradeHistorySerializer(serializers.ModelSerializer):
-    plPositive = serializers.SerializerMethodField()
-    pl         = serializers.SerializerMethodField()
-    open       = serializers.SerializerMethodField()
-    close      = serializers.SerializerMethodField()
-    openDate   = serializers.DateTimeField(source="open_date")
-    closeDate  = serializers.DateTimeField(source="close_date")
-    orderType  = serializers.CharField(source="order_type")
-    date       = serializers.DateTimeField(source="close_date")
-
-    class Meta:
-        model  = TradeHistory
-        fields = ["name", "date", "orderType", "position", "open", "openDate", "close", "closeDate", "pl", "plPositive"]
-
-    def get_plPositive(self, obj): return obj.pl >= 0
-    def get_pl(self, obj):
-        sign = "+" if obj.pl >= 0 else ""
-        return f"{sign}{obj.pl:.2f}%"
-    def get_open(self, obj):  return f"{obj.open_price:.0f}"
-    def get_close(self, obj): return f"{obj.close_price:.0f}"
 
 
 class CopyRelationshipSerializer(serializers.ModelSerializer):
@@ -340,85 +286,84 @@ class CopyRelationshipSerializer(serializers.ModelSerializer):
         return f"{sign}{obj.pl:,.1f}"
 
 
-class DummyCopierSerializer(serializers.ModelSerializer):
-    date     = serializers.DateTimeField(source="started_at")
-    copyDays = serializers.SerializerMethodField()
-    assets   = serializers.SerializerMethodField()
-    pl       = serializers.SerializerMethodField()
-
-    class Meta:
-        model  = DummyCopier
-        fields = ["name", "date", "copyDays", "assets", "pl"]
-
-    def get_copyDays(self, obj):
-        from django.utils import timezone
-        return (timezone.now() - obj.started_at).days
-
-    def get_assets(self, obj):
-        return f"{obj.allocated_amount:,.0f}"
-
-    def get_pl(self, obj):
-        sign = "+" if obj.pl >= 0 else ""
-        return f"{sign}{obj.pl:,.1f}"
-
-
 class TraderDetailSerializer(TraderSerializer):
-    """Full trader profile for the detail page — extends TraderSerializer."""
+    """Full trader profile for the detail page — extends TraderSerializer.
+
+    portfolio_breakdown / top_traded / performance_data / monthly_performance /
+    frequently_traded are now plain JSON fields on Trader (matching
+    orchard_capitals exactly) — DRF serializes them automatically, no
+    relational lookups or custom methods needed.
+    """
     roi_display           = serializers.SerializerMethodField()
-    masterPnl             = serializers.SerializerMethodField()
-    accountAssets         = serializers.SerializerMethodField()
     maxDrawdown           = serializers.SerializerMethodField()
     riskDisplay           = serializers.SerializerMethodField()
     cumEarnings           = serializers.SerializerMethodField()
     cumCopiers            = serializers.SerializerMethodField()
-    profitShare           = serializers.SerializerMethodField()
     winRate               = serializers.SerializerMethodField()
     minCapitalDisplay     = serializers.SerializerMethodField()
     is_copying            = serializers.SerializerMethodField()
     copy_status           = serializers.SerializerMethodField()
-    top_assets            = TraderAssetSerializer(source="trader_assets", many=True, read_only=True)
-    portfolio_allocations = PortfolioAllocationSerializer(many=True, read_only=True)
+
+    # ── orchard_capitals-parity profile fields ──────────────────────────────
+    # Output keys kept as chosen earlier this session (risk_score, trades_count,
+    # etc.) — only the underlying model columns were renamed to match orchard.
+    country_flag_url        = serializers.SerializerMethodField()
+    win_rate_pct            = serializers.SerializerMethodField()
+    risk_score              = serializers.IntegerField(source="risk")
+    trades_count            = serializers.IntegerField(source="trades")
+    subscribers_count       = serializers.IntegerField(source="subscribers")
+    current_positions_count = serializers.IntegerField(source="current_positions")
+    profitable_weeks_pct    = serializers.DecimalField(source="profitable_weeks", max_digits=5, decimal_places=2)
+    avg_profit_pct          = serializers.DecimalField(source="avg_profit_percent", max_digits=10, decimal_places=2)
+    avg_loss_pct            = serializers.DecimalField(source="avg_loss_percent", max_digits=10, decimal_places=2)
 
     class Meta(TraderSerializer.Meta):
         fields = TraderSerializer.Meta.fields + [
-            "roi_display", "masterPnl", "accountAssets", "maxDrawdown",
-            "riskDisplay", "cumEarnings", "cumCopiers", "profitShare", "winRate",
+            "roi_display", "maxDrawdown",
+            "riskDisplay", "cumEarnings", "cumCopiers", "winRate",
             "minCapitalDisplay", "followers_count", "trading_days",
-            "top_assets", "portfolio_allocations", "is_copying", "copy_status",
+            "portfolio_breakdown", "top_traded", "performance_data",
+            "monthly_performance", "is_copying", "copy_status",
+            # orchard-parity fields
+            "country", "country_flag_url", "badge", "risk_score", "trend_direction",
+            "trades_count", "avg_trade_time", "subscribers_count",
+            "current_positions_count", "expert_rating", "return_ytd", "return_2y",
+            "avg_score_7d", "profitable_weeks_pct", "total_trades_12m",
+            "avg_profit_pct", "avg_loss_pct", "total_wins", "total_losses",
+            "frequently_traded", "win_rate_pct",
         ]
 
+    def get_country_flag_url(self, obj):
+        if obj.country_flag:
+            return obj.country_flag.url
+        return None
+
+    def get_win_rate_pct(self, obj):
+        """Raw numeric win rate for donut-chart math (winRate is a display string)."""
+        return float(obj.win_rate)
+
     def get_roi_display(self, obj):
-        sign = "+" if obj.roi >= 0 else ""
-        return f"{sign}{obj.roi:.2f}%"
-
-    def get_masterPnl(self, obj):
-        sign = "+" if obj.master_pnl >= 0 else "-"
-        return f"{sign}${abs(obj.master_pnl):,.2f}"
-
-    def get_accountAssets(self, obj):
-        return f"${obj.account_assets:,.2f}"
+        sign = "+" if obj.gain >= 0 else ""
+        return f"{sign}{obj.gain:.2f}%"
 
     def get_maxDrawdown(self, obj):
         return f"{obj.max_drawdown:.2f}%"
 
     def get_riskDisplay(self, obj):
-        return _RISK_DISPLAY.get(obj.risk_level, "")
+        return _risk_label(obj.risk)
 
     def get_cumEarnings(self, obj):
-        sign = "+" if obj.cum_earnings >= 0 else "-"
-        return f"{sign}${abs(obj.cum_earnings):,.2f}"
+        sign = "+" if obj.cumulative_earnings_copiers >= 0 else "-"
+        return f"{sign}${abs(obj.cumulative_earnings_copiers):,.2f}"
 
     def get_cumCopiers(self, obj):
-        return f"{obj.cum_copiers:,}"
-
-    def get_profitShare(self, obj):
-        return f"{obj.profit_share:.0f}%"
+        return f"{obj.cumulative_copiers:,}"
 
     def get_winRate(self, obj):
         return f"{obj.win_rate:.2f}%"
 
     def get_minCapitalDisplay(self, obj):
-        return f"${obj.min_capital:,.2f}"
+        return f"${obj.min_account_threshold:,.2f}"
 
     def get_is_copying(self, obj):
         request = self.context.get("request")
@@ -474,14 +419,18 @@ class TransactionSerializer(serializers.ModelSerializer):
 class AdminWalletSerializer(serializers.ModelSerializer):
     name_display = serializers.CharField(source="get_name_display", read_only=True)
     icon_url     = serializers.SerializerMethodField()
+    qr_code_url  = serializers.SerializerMethodField()
 
     class Meta:
         model  = AdminWallet
-        fields = ["id", "name", "name_display", "symbol", "network", "address", "icon_url"]
+        fields = ["id", "name", "name_display", "symbol", "network", "address", "icon_url", "qr_code_url"]
 
     def get_icon_url(self, obj):
-        if obj.icon:
-            return obj.icon.url
+        return obj.get_icon_url() or None
+
+    def get_qr_code_url(self, obj):
+        if obj.qr_code:
+            return obj.qr_code.url
         return None
 
 
@@ -548,22 +497,24 @@ class CopyingTraderSerializer(serializers.ModelSerializer):
     trader_id    = serializers.IntegerField(source="trader.id")
     trader_name  = serializers.CharField(source="trader.name")
     avatar_url   = serializers.SerializerMethodField()
-    avatar_color = serializers.CharField(source="trader.avatar_color")
-    roi          = serializers.CharField(source="trader.roi")
-    risk_level   = serializers.CharField(source="trader.risk_level")
-    min_capital  = serializers.DecimalField(source="trader.min_capital", max_digits=18, decimal_places=2)
+    avatar_color = serializers.SerializerMethodField()
+    roi          = serializers.CharField(source="trader.gain")
+    min_capital  = serializers.DecimalField(source="trader.min_account_threshold", max_digits=18, decimal_places=2)
 
     class Meta:
         model  = CopyRelationship
         fields = [
             "id", "trader_id", "trader_name", "avatar_url", "avatar_color",
-            "roi", "risk_level", "min_capital", "allocated_amount", "pl", "started_at",
+            "roi", "min_capital", "allocated_amount", "pl", "started_at",
         ]
 
     def get_avatar_url(self, obj):
         if obj.trader.avatar:
             return obj.trader.avatar.url
         return None
+
+    def get_avatar_color(self, obj):
+        return _AVATAR_PALETTE[obj.trader_id % len(_AVATAR_PALETTE)] if obj.trader_id else _AVATAR_PALETTE[0]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -584,6 +535,4 @@ class SavedPaymentMethodSerializer(serializers.ModelSerializer):
         fields = ["wallet_id", "name", "name_display", "symbol", "network", "icon_url", "address", "updated_at"]
 
     def get_icon_url(self, obj):
-        if obj.wallet.icon:
-            return obj.wallet.icon.url
-        return None
+        return obj.wallet.get_icon_url() or None

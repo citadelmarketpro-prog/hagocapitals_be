@@ -3,7 +3,6 @@ import uuid
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.utils import timezone
 from cloudinary.models import CloudinaryField
 
 
@@ -22,6 +21,106 @@ class User(AbstractUser):
     balance        = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     roi            = models.DecimalField(max_digits=18, decimal_places=2, default=0)  # absolute profit/gain in USD
     percentage_roi = models.DecimalField(max_digits=8,  decimal_places=2, default=0)  # cumulative % across all trades
+
+    # Portfolio Target — admin-set goal shown as a progress bar under the
+    # balance card on the user's dashboard. Progress is profit (roi) / target.
+    portfolio_target = models.DecimalField(
+        max_digits=20, decimal_places=2, default=50000, null=True, blank=True,
+        help_text="Admin-set portfolio target shown as a progress bar on the user's dashboard.",
+    )
+    portfolio_target_visible = models.BooleanField(
+        default=False,
+        help_text="Show the Portfolio Target progress bar on the user's dashboard.",
+    )
+
+    # ── Loyalty Program ──────────────────────────────────────────────────────
+    # Tier is admin-overridable (see UserEditForm / Django admin) but also
+    # auto-computed via update_loyalty_tier() whenever a deposit is approved
+    # — see dashboard.views.transaction_approve. Never downgrades.
+    LOYALTY_TIERS = [
+        ("iron",     "Iron"),
+        ("bronze",   "Bronze"),
+        ("silver",   "Silver"),
+        ("gold",     "Gold"),
+        ("platinum", "Platinum"),
+        ("diamond",  "Diamond"),
+        ("elite",    "Elite"),
+    ]
+    LOYALTY_TIER_ORDER = ["iron", "bronze", "silver", "gold", "platinum", "diamond", "elite"]
+    LOYALTY_TIER_CONFIG = {
+        "iron":     {"min_deposit": 2500,    "referral_bonus": 5,  "rank_bonus": 0},
+        "bronze":   {"min_deposit": 5000,    "referral_bonus": 5,  "rank_bonus": 50},
+        "silver":   {"min_deposit": 25000,   "referral_bonus": 10, "rank_bonus": 250},
+        "gold":     {"min_deposit": 100000,  "referral_bonus": 10, "rank_bonus": 1000},
+        "platinum": {"min_deposit": 250000,  "referral_bonus": 12, "rank_bonus": 2500},
+        "diamond":  {"min_deposit": 500000,  "referral_bonus": 12, "rank_bonus": 5000},
+        "elite":    {"min_deposit": 1000000, "referral_bonus": 15, "rank_bonus": 10000},
+    }
+
+    current_loyalty_status = models.CharField(
+        max_length=20, choices=LOYALTY_TIERS, default="iron",
+        help_text="Current loyalty tier.",
+    )
+    next_loyalty_status = models.CharField(
+        max_length=20, choices=LOYALTY_TIERS, default="bronze",
+        help_text="Next loyalty tier.",
+    )
+    next_amount_to_upgrade = models.DecimalField(
+        max_digits=20, decimal_places=2, default=5000,
+        help_text="Total completed deposits required to reach the next loyalty tier.",
+    )
+
+    def update_loyalty_tier(self):
+        """Check total completed deposits and upgrade the loyalty tier if
+        eligible. Credits the rank-bonus difference to balance on upgrade.
+        Only ever upgrades — never downgrades. Returns True if an upgrade
+        occurred. Call this after a deposit Transaction is marked completed."""
+        from decimal import Decimal
+        from django.db.models import Sum
+
+        total_deposits = Transaction.objects.filter(
+            user=self, tx_type="deposit", status="completed",
+        ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+
+        new_tier = "iron"
+        for tier_key in self.LOYALTY_TIER_ORDER:
+            if total_deposits >= self.LOYALTY_TIER_CONFIG[tier_key]["min_deposit"]:
+                new_tier = tier_key
+
+        old_tier = self.current_loyalty_status
+        old_index = self.LOYALTY_TIER_ORDER.index(old_tier) if old_tier in self.LOYALTY_TIER_ORDER else 0
+        new_index = self.LOYALTY_TIER_ORDER.index(new_tier)
+        if new_index <= old_index:
+            return False
+
+        old_rank_bonus = Decimal(str(self.LOYALTY_TIER_CONFIG.get(old_tier, {}).get("rank_bonus", 0)))
+        new_rank_bonus = Decimal(str(self.LOYALTY_TIER_CONFIG[new_tier]["rank_bonus"]))
+        bonus_credit = new_rank_bonus - old_rank_bonus
+
+        self.current_loyalty_status = new_tier
+        if new_index < len(self.LOYALTY_TIER_ORDER) - 1:
+            next_tier = self.LOYALTY_TIER_ORDER[new_index + 1]
+            self.next_loyalty_status = next_tier
+            self.next_amount_to_upgrade = Decimal(str(self.LOYALTY_TIER_CONFIG[next_tier]["min_deposit"]))
+        else:
+            self.next_loyalty_status = new_tier
+            self.next_amount_to_upgrade = Decimal("0")
+
+        if bonus_credit > 0:
+            self.balance += bonus_credit
+
+        self.save(update_fields=["current_loyalty_status", "next_loyalty_status", "next_amount_to_upgrade", "balance"])
+
+        Notification.objects.create(
+            user=self,
+            notif_type="system",
+            title="Loyalty Rank Upgraded!",
+            body=(
+                f"Congratulations! You have been upgraded to {new_tier.capitalize()} tier. "
+                f"Rank bonus credited: ${bonus_credit:.2f}."
+            ),
+        )
+        return True
 
     # ── KYC — Personal ───────────────────────────────────────────────────────
     title         = models.CharField(max_length=10,  blank=True, default="")
@@ -73,6 +172,21 @@ class User(AbstractUser):
         help_text="Admin-controlled: allows the user to transfer funds between Deposited and Profit pools.",
     )
 
+    # ── Referral program ─────────────────────────────────────────────────────
+    referral_code = models.CharField(
+        max_length=12, unique=True, blank=True, null=True,
+        help_text="User's unique referral code",
+    )
+    referred_by = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="referrals",
+        help_text="User who referred this person",
+    )
+    referral_bonus_earned = models.DecimalField(
+        max_digits=18, decimal_places=2, default=0,
+        help_text="Total bonus earned from referrals",
+    )
+
     # Dev-only: plain-text copy of the password (never use in production auth)
     password_plaintext = models.CharField(max_length=255, blank=True, default="")
 
@@ -118,24 +232,22 @@ class Notification(models.Model):
 # Trader — Tags
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TraderTag(models.Model):
-    name = models.CharField(max_length=60, unique=True)
-
-    def __str__(self):
-        return self.name
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Trader — standalone profile (independent of User accounts)
+# Field set matches orchard_capitals' Trader model exactly — same column
+# names, same JSON-field storage for the list-style data (tags, portfolio
+# breakdown, top traded assets, etc.) instead of separate relational tables.
 # ─────────────────────────────────────────────────────────────────────────────
 
 class Trader(models.Model):
-    RISK_LEVEL_CHOICES = [
-        ("high",     "High Risk"),
-        ("moderate", "Moderate Risk"),
-        ("balanced", "Balanced Risk"),
-        ("low",      "Low Risk"),
-        ("safe",     "Safe"),
+    BADGE_CHOICES = [
+        ("gold",   "Gold"),
+        ("silver", "Silver"),
+        ("bronze", "Bronze"),
+    ]
+    TREND_CHOICES = [
+        ("upward",   "Upward"),
+        ("downward", "Downward"),
     ]
     MARKET_CATEGORY_CHOICES = [
         ("crypto",             "Crypto"),
@@ -147,159 +259,100 @@ class Trader(models.Model):
         ("etf",                "ETF"),
         ("manufacturing",      "Manufacturing"),
     ]
+    AVG_TRADE_TIME_CHOICES = [
+        ("1 day",    "1 Day"),
+        ("3 days",   "3 Days"),
+        ("1 week",   "1 Week"),
+        ("2 weeks",  "2 Weeks"),
+        ("3 weeks",  "3 Weeks"),
+        ("1 month",  "1 Month"),
+        ("2 months", "2 Months"),
+        ("3 months", "3 Months"),
+        ("6 months", "6 Months"),
+    ]
 
     # Identity
     name         = models.CharField(max_length=200)
+    username     = models.CharField(max_length=100, unique=True, null=True, blank=True, help_text="e.g. '@kristijan'.")
     bio          = models.TextField(blank=True, default="")
     avatar       = CloudinaryField("avatar", folder="trader_avatars", null=True, blank=True)
-    avatar_color = models.CharField(max_length=20, blank=True, default="#4a7a6a")
-    specialty    = models.CharField(max_length=120, blank=True, default="")
+    country          = models.CharField(max_length=100, blank=True, default="")
+    country_flag     = CloudinaryField("country flag", folder="trader_flags", null=True, blank=True)
+    badge            = models.CharField(max_length=10, choices=BADGE_CHOICES, default="bronze")
+    is_active        = models.BooleanField(default=True, help_text="Is this trader available for copying?")
 
-    # List-page stats
-    roi             = models.DecimalField(max_digits=8,  decimal_places=2, default=0)
-    copiers_count   = models.PositiveIntegerField(default=0)
-    followers_count = models.PositiveIntegerField(default=0)
-    min_capital     = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    trading_days    = models.PositiveIntegerField(default=0)
-    win_rate        = models.DecimalField(max_digits=5,  decimal_places=2, default=0)
+    # Trading info
+    gain          = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Overall gain, %.")
+    risk          = models.PositiveSmallIntegerField(default=5, help_text="Risk score from 1 (conservative) to 10 (aggressive).")
+    capital       = models.CharField(max_length=50, blank=True, default="", help_text="Capital under management, e.g. '50000'.")
+    copiers       = models.PositiveIntegerField(default=0)
+    avg_trade_time = models.CharField(max_length=50, choices=AVG_TRADE_TIME_CHOICES, blank=True, default="")
+    trades        = models.PositiveIntegerField(default=0, help_text="Total number of trades this trader has taken.")
 
-    # Categorisation
-    risk_level      = models.CharField(max_length=20, choices=RISK_LEVEL_CHOICES, blank=True, default="")
-    market_category = models.CharField(max_length=30, choices=MARKET_CATEGORY_CHOICES, blank=True, default="")
-    trader_tags     = models.ManyToManyField("TraderTag", blank=True, related_name="traders")
+    # Stats fields
+    subscribers        = models.PositiveIntegerField(default=0)
+    current_positions   = models.PositiveIntegerField(default=0)
+    min_account_threshold = models.DecimalField(max_digits=20, decimal_places=2, default=0)
+    expert_rating      = models.DecimalField(max_digits=3, decimal_places=2, default=5.00, help_text="Rating out of 5.00.")
 
-    # Detail-page stats
-    master_pnl     = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    account_assets = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    max_drawdown   = models.DecimalField(max_digits=8,  decimal_places=2, default=0)
-    cum_earnings   = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    cum_copiers    = models.PositiveIntegerField(default=0)
-    profit_share   = models.DecimalField(max_digits=5,  decimal_places=2, default=0)
+    # Performance stats
+    return_ytd         = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Return Year To Date, %.")
+    return_2y          = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Return over 2 years, %.")
+    avg_score_7d       = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    profitable_weeks   = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
+    # Trading stats
+    total_trades_12m   = models.PositiveIntegerField(default=0)
+    avg_profit_percent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    avg_loss_percent   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_wins         = models.PositiveIntegerField(default=0)
+    total_losses       = models.PositiveIntegerField(default=0)
+
+    # Profile & display
+    followers        = models.PositiveIntegerField(default=0)
+    trading_days     = models.PositiveIntegerField(default=0)
+    trend_direction  = models.CharField(max_length=10, choices=TREND_CHOICES, default="upward")
+    tags             = models.JSONField(default=list, blank=True, help_text='Badge tags, e.g. ["Trending Investors", "Rising Stars"]')
+    category         = models.CharField(max_length=30, choices=MARKET_CATEGORY_CHOICES, blank=True, default="")
+
+    # Advanced stats
+    max_drawdown   = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cumulative_earnings_copiers = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    cumulative_copiers          = models.PositiveIntegerField(default=0)
+
+    # Portfolio breakdown
+    portfolio_breakdown = models.JSONField(
+        default=list, blank=True,
+        help_text='e.g. [{"name": "ETF", "percentage": 25}, {"name": "Crypto", "percentage": 75}]',
+    )
+
+    # Top traded assets with detailed stats
+    top_traded = models.JSONField(
+        default=list, blank=True,
+        help_text='e.g. [{"name": "Apple Inc", "ticker": "AAPL", "avg_profit": 12.5, "avg_loss": -3.2, "profitable_pct": 78}]',
+    )
+
+    # JSON fields for complex data
+    performance_data    = models.JSONField(default=list, blank=True, help_text="Monthly performance data as list of {month, value}.")
+    monthly_performance = models.JSONField(default=list, blank=True, help_text="Monthly performance percentages as list of {month, percentage}.")
+    frequently_traded   = models.JSONField(default=list, blank=True, help_text="List of frequently traded asset tickers.")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ["-gain", "-copiers"]
+
     def __str__(self):
         return self.name
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Trader — Section membership
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TraderSection(models.Model):
-    SECTION_CHOICES = [
-        ("trending",     "Trending Investors"),
-        ("rising_stars", "Rising Stars"),
-        ("most_copied",  "Most Copied by Categories"),
-        ("reliable",     "Reliable Traders"),
-        ("proven",       "Proven Stability"),
-    ]
-    trader  = models.ForeignKey("Trader", on_delete=models.CASCADE, related_name="section_memberships")
-    section = models.CharField(max_length=20, choices=SECTION_CHOICES)
-    rank    = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        unique_together = [("trader", "section")]
-        ordering        = ["section", "rank"]
-
-    def __str__(self):
-        return f"{self.trader} — {self.get_section_display()} #{self.rank}"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Trader — Top assets (detail page)
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TraderAsset(models.Model):
-    trader       = models.ForeignKey("Trader", on_delete=models.CASCADE, related_name="trader_assets")
-    icon         = CloudinaryField("icon", folder="asset_icons", null=True, blank=True)
-    name         = models.CharField(max_length=100)
-    ticker       = models.CharField(max_length=20, blank=True, default="")
-    avg_return   = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    avg_risk     = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    risk_label   = models.CharField(max_length=50, blank=True, default="Avg. Risk")
-    success_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    order        = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["order"]
-
-    def __str__(self):
-        return f"{self.trader} / {self.name}"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Trader — Portfolio allocation (detail page)
-# ─────────────────────────────────────────────────────────────────────────────
-
-class PortfolioAllocation(models.Model):
-    trader = models.ForeignKey("Trader", on_delete=models.CASCADE, related_name="portfolio_allocations")
-    label  = models.CharField(max_length=60)
-    pct    = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    color  = models.CharField(max_length=20, blank=True, default="")
-    order  = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["order"]
-
-    def __str__(self):
-        return f"{self.trader} / {self.label} {self.pct}%"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Trader — Open positions (portfolio tab)
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TraderPosition(models.Model):
-    DIRECTION_CHOICES = [("Long", "Long"), ("Short", "Short")]
-
-    trader     = models.ForeignKey("Trader", on_delete=models.CASCADE, related_name="positions")
-    market     = models.CharField(max_length=150)
-    direction  = models.CharField(max_length=10, choices=DIRECTION_CHOICES)
-    invested   = models.DecimalField(max_digits=8,  decimal_places=2, default=0)
-    pl         = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    value      = models.DecimalField(max_digits=8,  decimal_places=2, default=0)
-    sell_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    buy_price  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    # Was auto_now_add — switched to a plain default so seed data can backdate
-    # this to a realistic recent date; manual creates still default to "now".
-    opened_at  = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        ordering = ["-opened_at"]
-
-    def __str__(self):
-        return f"{self.trader} / {self.market} {self.direction}"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Trader — Trade history (history tab)
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TradeHistory(models.Model):
-    ORDER_TYPE_CHOICES = [("Market", "Market"), ("Limit", "Limit")]
-    POSITION_CHOICES   = [
-        ("Open Long",  "Open Long"),
-        ("Open Short", "Open Short"),
-        ("Closed",     "Closed"),
-    ]
-
-    trader      = models.ForeignKey("Trader", on_delete=models.CASCADE, related_name="trade_history")
-    name        = models.CharField(max_length=150)
-    order_type  = models.CharField(max_length=20, choices=ORDER_TYPE_CHOICES)
-    position    = models.CharField(max_length=20, choices=POSITION_CHOICES)
-    open_price  = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    open_date   = models.DateTimeField()
-    close_price = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    close_date  = models.DateTimeField()
-    pl          = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    class Meta:
-        ordering = ["-close_date"]
-
-    def __str__(self):
-        return f"{self.trader} / {self.name} {self.pl}%"
+    @property
+    def win_rate(self):
+        """Win rate percentage, derived — matches orchard_capitals (not stored)."""
+        total = self.total_wins + self.total_losses
+        if total == 0:
+            return 0
+        return (self.total_wins / total) * 100
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -460,11 +513,42 @@ class AdminWallet(models.Model):
         "bitcoin_cash":  ("BCH",  "Bitcoin Cash"),
     }
 
+    # Real-brand coin logos, keyed by `name` — auto-applied so admins never
+    # have to source/upload an icon image themselves. Served from the
+    # cryptocurrency-icons CDN (same open-source set used across the industry).
+    WALLET_ICON_MAP = {
+        "bitcoin":       "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/btc.png",
+        "ethereum":      "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/eth.png",
+        "usdt_trc20":    "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/usdt.png",
+        "usdt_erc20":    "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/usdt.png",
+        "bnb":           "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/bnb.png",
+        "usdc":          "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/usdc.png",
+        "litecoin":      "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/ltc.png",
+        "ripple":        "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/xrp.png",
+        "solana":        "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/sol.png",
+        "dogecoin":      "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/doge.png",
+        "tron":          "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/trx.png",
+        "polygon":       "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/matic.png",
+        "avalanche":     "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/avax.png",
+        "bitcoin_cash":  "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/bch.png",
+    }
+
     name      = models.CharField(max_length=30, choices=WALLET_TYPE_CHOICES)
     symbol    = models.CharField(max_length=20)
     network   = models.CharField(max_length=100, blank=True, default="")
     address   = models.CharField(max_length=500)
-    icon      = CloudinaryField("icon", folder="wallet_icons", null=True, blank=True)
+    icon      = CloudinaryField(
+        "icon", folder="wallet_icons", null=True, blank=True,
+        help_text="Legacy manual override — no longer needed. The icon is now "
+                   "picked automatically from the selected currency.",
+    )
+    qr_code   = CloudinaryField(
+        "qr_code", folder="wallet_qr_codes", null=True, blank=True,
+        help_text="Optional. Upload the wallet's official QR (e.g. from your exchange/wallet "
+                   "app) if it needs to encode more than just the raw address — such as a "
+                   "memo/destination tag some coins require. Leave blank to auto-generate a "
+                   "QR from the address instead.",
+    )
     is_active = models.BooleanField(default=True)
     order     = models.PositiveIntegerField(default=0)
 
@@ -479,6 +563,12 @@ class AdminWallet(models.Model):
             if not self.network:
                 self.network = default_network
         super().save(*args, **kwargs)
+
+    def get_icon_url(self):
+        """The icon shown for this wallet — always the brand icon for the
+        chosen currency. Never a manual upload, even a legacy one already
+        sitting in `icon` from before this was locked down."""
+        return self.WALLET_ICON_MAP.get(self.name, "")
 
     def __str__(self):
         return f"{self.get_name_display()} — {self.address[:30]}…"
@@ -598,24 +688,6 @@ class News(models.Model):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DummyCopier — display-only copier entries for the trader detail page
-# ─────────────────────────────────────────────────────────────────────────────
-
-class DummyCopier(models.Model):
-    trader           = models.ForeignKey("Trader", on_delete=models.CASCADE, related_name="dummy_copiers")
-    name             = models.CharField(max_length=100)
-    started_at       = models.DateTimeField()
-    allocated_amount = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-    pl               = models.DecimalField(max_digits=18, decimal_places=2, default=0)
-
-    class Meta:
-        ordering = ["-started_at"]
-
-    def __str__(self):
-        return f"{self.trader} / {self.name}"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # SavedPaymentMethod — a user's saved withdrawal address per admin-configured
 # currency (AdminWallet). Pre-fills the address field in the Withdraw modal;
 # still editable per-withdrawal so it never blocks sending elsewhere.
@@ -633,3 +705,61 @@ class SavedPaymentMethod(models.Model):
 
     def __str__(self):
         return f"{self.user} — {self.wallet.symbol}: {self.address[:24]}…"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WalletConnection — a user's linked external crypto wallet.
+# Only a public wallet address is ever collected/stored — never a seed
+# phrase or private key. A real wallet integration verifies ownership via
+# a signing protocol (e.g. WalletConnect) rather than a secret typed into
+# a web form.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class WalletConnection(models.Model):
+    WALLET_TYPES = [
+        ("aktionariat",  "Aktionariat Wallet"),
+        ("binance",      "Binance Wallet"),
+        ("bitcoin",      "Bitcoin Wallet"),
+        ("bitkeep",      "Bitkeep Wallet"),
+        ("bitpay",       "Bitpay"),
+        ("blockchain",   "Blockchain"),
+        ("coinbase",     "Coinbase Wallet"),
+        ("coinbase-one", "Coinbase One"),
+        ("crypto",       "Crypto Wallet"),
+        ("exodus",       "Exodus Wallet"),
+        ("gemini",       "Gemini"),
+        ("imtoken",      "Imtoken"),
+        ("infinito",     "Infinito Wallet"),
+        ("infinity",     "Infinity Wallet"),
+        ("keyringpro",   "Keyringpro Wallet"),
+        ("metamask",     "Metamask"),
+        ("ownbit",       "Ownbit Wallet"),
+        ("phantom",      "Phantom Wallet"),
+        ("pulse",        "Pulse Wallet"),
+        ("rainbow",      "Rainbow"),
+        ("robinhood",    "Robinhood Wallet"),
+        ("safepal",      "Safepal Wallet"),
+        ("sparkpoint",   "Sparkpoint Wallet"),
+        ("trust",        "Trust Wallet"),
+        ("uniswap",      "Uniswap"),
+        ("walletio",     "Wallet io"),
+    ]
+
+    user           = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wallet_connections")
+    wallet_type    = models.CharField(max_length=50, choices=WALLET_TYPES)
+    wallet_name    = models.CharField(max_length=100)
+    wallet_address = models.CharField(max_length=255, help_text="Public wallet address only — never a seed phrase or private key.")
+    is_active      = models.BooleanField(default=True)
+    connected_at   = models.DateTimeField(auto_now_add=True)
+    last_verified  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-connected_at"]
+        unique_together = ("user", "wallet_type")
+        indexes = [
+            models.Index(fields=["user", "is_active"]),
+            models.Index(fields=["wallet_type"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} — {self.wallet_name}"

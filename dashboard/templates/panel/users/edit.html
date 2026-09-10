@@ -83,6 +83,59 @@
     </div>
 
     <div class="panel-card p-6 mb-5">
+      <h2 class="text-sm font-semibold uppercase tracking-widest mb-4" style="color:#B0D45A;">Portfolio Target</h2>
+      <p class="text-xs mb-4" style="color:#8fa896;">Sets the goal shown on the user's Portfolio Target progress bar (dashboard, under the balance card). Progress is tracked as ROI / Target.</p>
+
+      <div class="grid grid-cols-2 gap-4 items-end">
+        <div>
+          <label class="form-label">Target ($)</label>
+          <input type="number" name="portfolio_target" value="{{ form.portfolio_target.value|default:'50000' }}" class="form-control" step="0.01" min="0" placeholder="50000" />
+          {% for e in form.portfolio_target.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="pb-2.5">
+          <label class="flex items-center gap-2 cursor-pointer" title="Show the Portfolio Target progress bar on this user's dashboard">
+            <input type="checkbox" name="portfolio_target_visible" {% if form.portfolio_target_visible.value %}checked{% endif %} />
+            <span class="text-sm font-semibold" style="color:#B0D45A;">Visible to user</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card p-6 mb-5">
+      <h2 class="text-sm font-semibold uppercase tracking-widest mb-4" style="color:#B0D45A;">Loyalty Program</h2>
+      <p class="text-xs mb-4" style="color:#8fa896;">
+        Tier is normally auto-upgraded when a deposit is approved (never downgrades), based on the user's total
+        completed deposits. You can also override it manually here.
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="form-label">Current Tier</label>
+          <select name="current_loyalty_status" class="form-control">
+            {% for val, label in form.fields.current_loyalty_status.choices %}
+              <option value="{{ val }}" {% if form.current_loyalty_status.value == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          {% for e in form.current_loyalty_status.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+        <div>
+          <label class="form-label">Next Tier</label>
+          <select name="next_loyalty_status" class="form-control">
+            {% for val, label in form.fields.next_loyalty_status.choices %}
+              <option value="{{ val }}" {% if form.next_loyalty_status.value == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          {% for e in form.next_loyalty_status.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+        <div>
+          <label class="form-label">Amount to Next Tier ($)</label>
+          <input type="number" name="next_amount_to_upgrade" value="{{ form.next_amount_to_upgrade.value|default:'5000' }}" class="form-control" step="0.01" min="0" placeholder="5000" />
+          {% for e in form.next_amount_to_upgrade.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card p-6 mb-5">
       <h2 class="text-sm font-semibold uppercase tracking-widest mb-4" style="color:#B0D45A;">KYC - Personal</h2>
 
       <div class="grid grid-cols-3 gap-4">

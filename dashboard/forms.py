@@ -7,14 +7,7 @@ from core.models import (
     AdminWallet,
     CopyRelationship,
     CopyTrade,
-    DummyCopier,
-    PortfolioAllocation,
     Trader,
-    TraderAsset,
-    TraderPosition,
-    TradeHistory,
-    TraderSection,
-    TraderTag,
     Transaction,
 )
 
@@ -41,6 +34,10 @@ class UserEditForm(forms.ModelForm):
             "bio",
             # Financials
             "balance", "roi", "percentage_roi",
+            # Portfolio Target
+            "portfolio_target", "portfolio_target_visible",
+            # Loyalty Program
+            "current_loyalty_status", "next_loyalty_status", "next_amount_to_upgrade",
             # KYC — Personal
             "title", "date_of_birth", "phone",
             # KYC — Address
@@ -60,6 +57,8 @@ class UserEditForm(forms.ModelForm):
             "bio":              forms.Textarea(attrs={"rows": 3}),
             "kyc_reject_reason": forms.Textarea(attrs={"rows": 3}),
             "date_of_birth":    forms.DateInput(attrs={"type": "date"}),
+            "portfolio_target": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "next_amount_to_upgrade": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
         }
 
     def save(self, commit=True):
@@ -126,93 +125,49 @@ class RejectKycForm(forms.Form):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TraderForm(forms.ModelForm):
-    trader_tags = forms.ModelMultipleChoiceField(
-        queryset=TraderTag.objects.all(),
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-        label="Tags",
-    )
-
     class Meta:
         model = Trader
         fields = [
-            "name", "bio", "avatar", "avatar_color", "specialty",
-            "roi", "copiers_count", "followers_count", "min_capital",
-            "trading_days", "win_rate", "risk_level", "market_category",
-            "trader_tags",
-            "master_pnl", "account_assets", "max_drawdown",
-            "cum_earnings", "cum_copiers", "profit_share",
+            "name", "username", "bio", "avatar",
+            "country", "country_flag", "badge", "is_active",
+            "gain", "copiers", "followers", "min_account_threshold", "capital",
+            "trades", "avg_trade_time",
+            "trading_days", "category", "risk", "trend_direction",
+            "tags",
+            "max_drawdown", "cumulative_earnings_copiers", "cumulative_copiers",
+            "subscribers", "current_positions", "expert_rating",
+            "return_ytd", "return_2y", "avg_score_7d", "profitable_weeks",
+            "total_trades_12m", "avg_profit_percent", "avg_loss_percent",
+            "total_wins", "total_losses",
+            "portfolio_breakdown", "top_traded",
+            "performance_data", "monthly_performance", "frequently_traded",
         ]
         widgets = {
-            "bio": forms.Textarea(attrs={"rows": 3}),
+            "bio":  forms.Textarea(attrs={"rows": 3}),
+            "tags": forms.Textarea(attrs={"rows": 2, "placeholder": '["Trending Investors", "Rising Stars"]'}),
+            "portfolio_breakdown": forms.Textarea(attrs={"rows": 3, "placeholder": '[{"name": "ETF", "percentage": 25}, {"name": "Crypto", "percentage": 75}]'}),
+            "top_traded": forms.Textarea(attrs={"rows": 3, "placeholder": '[{"name": "Apple Inc", "ticker": "AAPL", "avg_profit": 12.5, "avg_loss": -3.2, "profitable_pct": 78}]'}),
+            "performance_data": forms.Textarea(attrs={"rows": 2, "placeholder": '[{"month": "Jan", "value": 10000}]'}),
+            "monthly_performance": forms.Textarea(attrs={"rows": 2, "placeholder": '[{"month": "Jan", "percentage": 5.2}]'}),
+            "frequently_traded": forms.Textarea(attrs={"rows": 2, "placeholder": '["AAPL", "TSLA", "BTC"]'}),
         }
 
+    # These JSON fields all have blank=True at the model level so admins can
+    # leave them empty (seed_trader_demo_data fills them in afterwards). An
+    # empty textarea makes Django's JSONField form field produce None instead
+    # of the model's [] default — coerce it back here so it never hits the
+    # NOT NULL JSON column as a literal null.
+    _JSON_LIST_FIELDS = (
+        "tags", "portfolio_breakdown", "top_traded",
+        "performance_data", "monthly_performance", "frequently_traded",
+    )
 
-class TraderTagForm(forms.ModelForm):
-    class Meta:
-        model  = TraderTag
-        fields = ["name"]
-
-
-class TraderSectionForm(forms.ModelForm):
-    class Meta:
-        model  = TraderSection
-        fields = ["section", "rank"]
-
-
-class TraderAssetForm(forms.ModelForm):
-    class Meta:
-        model  = TraderAsset
-        fields = ["icon", "name", "ticker", "avg_return", "avg_risk", "risk_label", "success_rate", "order"]
-
-
-class PortfolioAllocationForm(forms.ModelForm):
-    class Meta:
-        model  = PortfolioAllocation
-        fields = ["label", "pct", "color", "order"]
-        widgets = {
-            "color": forms.TextInput(attrs={"type": "color", "style": "height:42px; padding:4px;"}),
-        }
-
-
-# Inline formset — lets the trader edit page manage all Portfolio Allocation
-# rows (add/edit/delete) in one submit, alongside the main trader fields.
-#
-# extra=0 is deliberate, not a typo: pct/order both have a non-empty model
-# `default=0`, which Django's ModelForm machinery propagates onto the
-# generated form field as `initial=0`. That makes has_changed() compare the
-# untouched extra row's submitted "" against initial 0 (`0 != ""` -> True),
-# so Django thinks the blank row was edited and fully validates it instead
-# of skipping it — and it then fails on the genuinely-empty required fields
-# (label, pct). With extra>0 this silently failed the WHOLE form (including
-# unrelated fields like min_capital) on every edit, since the view only
-# saves when both form.is_valid() and allocation_fs.is_valid() are True.
-# The template's own "+ Add Allocation Row" button already renders new
-# blank rows client-side (via the <template> + __prefix__ substitution), so
-# extra=0 loses no functionality — it just stops baking pre-broken blank
-# rows into every GET-rendered form.
-PortfolioAllocationFormSet = forms.inlineformset_factory(
-    Trader, PortfolioAllocation,
-    form=PortfolioAllocationForm,
-    fields=["label", "pct", "color", "order"],
-    extra=0, can_delete=True,
-)
-
-
-class DummyCopierForm(forms.ModelForm):
-    """Display-only 'Copiers' row shown on the public trader page — a free-text
-    name, not linked to any real user account."""
-
-    class Meta:
-        model  = DummyCopier
-        fields = ["name", "started_at", "allocated_amount", "pl"]
-        widgets = {
-            "started_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["started_at"].input_formats = ["%Y-%m-%dT%H:%M"]
+    def clean(self):
+        cleaned = super().clean()
+        for field in self._JSON_LIST_FIELDS:
+            if field in cleaned and cleaned[field] is None:
+                cleaned[field] = []
+        return cleaned
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -308,7 +263,9 @@ class CustomEmailForm(forms.Form):
 class AdminWalletForm(forms.ModelForm):
     class Meta:
         model  = AdminWallet
-        fields = ["name", "symbol", "network", "address", "icon", "is_active", "order"]
+        # `icon` is intentionally excluded — it's auto-derived from `name`
+        # (see AdminWallet.get_icon_url / WALLET_ICON_MAP), never uploaded.
+        fields = ["name", "symbol", "network", "address", "qr_code", "is_active", "order"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -647,15 +604,6 @@ class AddTradeForm(forms.Form):
         return asset
 
 
-class TraderPositionForm(forms.ModelForm):
-    class Meta:
-        model  = TraderPosition
-        fields = ["market", "direction", "invested", "pl", "value", "sell_price", "buy_price"]
-        widgets = {
-            "market": forms.TextInput(attrs={"placeholder": "e.g. BTC/USD"}),
-        }
-
-
 _EDIT_TRADE_TYPE_CHOICES      = [("stock", "Stock"), ("crypto", "Crypto"), ("forex", "Forex")]
 _EDIT_TRADE_DIRECTION_CHOICES = [("Buy", "Buy"), ("Sell", "Sell")]
 _EDIT_TRADE_STATUS_CHOICES    = [("open", "Open"), ("closed", "Closed"), ("pending", "Pending")]
@@ -683,20 +631,5 @@ class EditCopyTradeForm(forms.ModelForm):
             "duration":    forms.Select(choices=_EDIT_TRADE_DURATION_CHOICES,  attrs={"class": _FC}),
             "status":      forms.Select(choices=_EDIT_TRADE_STATUS_CHOICES,    attrs={"class": _FC}),
         }
-
-
-class TradeHistoryForm(forms.ModelForm):
-    class Meta:
-        model   = TradeHistory
-        fields  = ["name", "order_type", "position", "open_price", "open_date", "close_price", "close_date", "pl"]
-        widgets = {
-            "open_date":  forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
-            "close_date": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["open_date"].input_formats  = ["%Y-%m-%dT%H:%M"]
-        self.fields["close_date"].input_formats = ["%Y-%m-%dT%H:%M"]
 
 

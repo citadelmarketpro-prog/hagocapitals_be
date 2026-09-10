@@ -20,7 +20,7 @@
   <div class="table-wrapper">
   <table class="data-table">
     <thead><tr>
-      <th>Trader</th><th>Specialty</th><th>ROI</th><th>Copiers</th><th>Risk</th><th>Min Capital</th><th>Sections</th><th>Actions</th>
+      <th>Trader</th><th>Category</th><th>Gain</th><th>Copiers</th><th>Risk</th><th>Min Capital</th><th>Actions</th>
     </tr></thead>
     <tbody>
     {% for t in page_obj %}
@@ -29,34 +29,27 @@
         <div class="flex items-center gap-3">
           {% if t.avatar %}<img src="{{ t.avatar.url }}" class="w-9 h-9 rounded-full object-cover" />
           {% else %}
-          <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style="background:{{ t.avatar_color }}; color:#f0f0f0;">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style="background:#2a4a38; color:#f0f0f0;">
             {{ t.name|first }}
           </div>
           {% endif %}
           <div>
             <a href="{% url 'panel:trader_detail' t.pk %}" class="font-semibold hover:underline" style="color:#B0D45A;">{{ t.name }}</a>
-            <p class="text-xs" style="color:#8fa896;">{{ t.market_category }}</p>
+            <p class="text-xs" style="color:#8fa896;">{{ t.username }}</p>
           </div>
         </div>
       </td>
-      <td style="color:#8fa896; font-size:13px;">{{ t.specialty|truncatechars:28 }}</td>
-      <td style="color:{% if t.roi >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">
-        {% if t.roi >= 0 %}+{% endif %}{{ t.roi|floatformat:2 }}%
+      <td style="color:#8fa896; font-size:13px;">{{ t.category|truncatechars:28 }}</td>
+      <td style="color:{% if t.gain >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">
+        {% if t.gain >= 0 %}+{% endif %}{{ t.gain|floatformat:2 }}%
       </td>
-      <td style="color:#f0f0f0;">{{ t.copiers_count }}</td>
+      <td style="color:#f0f0f0;">{{ t.copiers }}</td>
       <td>
-        {% if t.risk_level == "high"     %}<span class="badge badge-red">High</span>
-        {% elif t.risk_level == "moderate"%}<span class="badge badge-yellow">Moderate</span>
-        {% elif t.risk_level == "balanced"%}<span class="badge badge-green">Balanced</span>
-        {% elif t.risk_level == "low"    %}<span class="badge badge-blue">Low</span>
-        {% else %}<span class="badge badge-gray">Safe</span>{% endif %}
+        {% if t.risk <= 3     %}<span class="badge badge-blue">Conservative</span>
+        {% elif t.risk <= 6   %}<span class="badge badge-yellow">Swing trader</span>
+        {% else               %}<span class="badge badge-red">Aggressive</span>{% endif %}
       </td>
-      <td style="color:#f0f0f0; font-weight:600;">${{ t.min_capital|floatformat:0 }}</td>
-      <td>
-        {% for sec in t.section_memberships.all %}
-          <span class="badge badge-gray" style="margin:1px;">{{ sec.get_section_display|truncatechars:12 }}</span>
-        {% endfor %}
-      </td>
+      <td style="color:#f0f0f0; font-weight:600;">${{ t.min_account_threshold|floatformat:0 }}</td>
       <td>
         <div class="flex gap-2">
           <a href="{% url 'panel:trader_detail' t.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">View</a>

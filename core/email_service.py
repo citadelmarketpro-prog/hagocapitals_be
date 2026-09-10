@@ -113,6 +113,13 @@ def _base_styles() -> str:
             background-color: #B0D45A;
             margin-top: 18px;
         }
+        .header-logo-chip {
+            display: inline-block;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 10px 16px;
+            line-height: 0;
+        }
 
         /* ── Body ── */
         .body-content {
@@ -317,13 +324,34 @@ def _base_styles() -> str:
             color: #B0D45A;
             margin-bottom: 6px;
         }
+
+        /* ── Sign-off ── */
+        .signature {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #4b5c4b;
+        }
+        .signature p {
+            margin: 2px 0;
+        }
+        .signature-name {
+            font-weight: 700;
+            color: #0b1c11;
+        }
     """
 
 
 def _header_html() -> str:
-    return """
+    frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+    # logo_one.png is drawn for a light background (it has black wordmark
+    # text) — the header itself stays dark to match the rest of the brand
+    # accent, so the logo sits on its own small white chip for legibility.
+    logo_url = f"{frontend}/logos/logo_one.png"
+    return f"""
     <div class="header">
-        <div class="header-logo">Hago<span>Capitals</span></div>
+        <div class="header-logo-chip">
+            <img src="{logo_url}" alt="HagoCapitals" width="140" style="display:block; width:140px; height:auto; max-width:140px; border:0;" />
+        </div>
         <div class="header-tagline">Copy Trading Platform</div>
         <div class="header-divider"></div>
     </div>
@@ -402,6 +430,32 @@ def _footer_html(user_email: str, social_links: dict | None = None) -> str:
     """
 
 
+def _signature_html() -> str:
+    """Shared sign-off block used at the end of every user-facing email body,
+    right before the footer."""
+    return """
+    <div class="signature">
+        <p>Warm regards,</p>
+        <p class="signature-name">The HagoCapitals Team</p>
+    </div>
+    """
+
+
+def _admin_footer_html(note: str) -> str:
+    """Branded footer for internal admin-notification emails — same visual
+    identity as the user-facing footer, minus the customer-facing links."""
+    year = timezone.now().year
+    return f"""
+    <div class="footer">
+        <div class="footer-brand">HagoCapitals</div>
+        <div class="footer-text">{note}</div>
+        <div class="footer-text" style="margin-top:10px;">
+            &copy; {year} HagoCapitals. Internal notification — not sent to the customer.
+        </div>
+    </div>
+    """
+
+
 def _wrap(body: str) -> str:
     """Wrap body HTML in a full document with shared styles."""
     return f"""<!DOCTYPE html>
@@ -450,6 +504,7 @@ def send_welcome_email(user) -> bool:
             If you have any questions, our support team is here to help around the clock.
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Welcome to HagoCapitals", _wrap(body))
@@ -483,6 +538,7 @@ def send_verification_code_email(user, code: str) -> bool:
             If you did not create a HagoCapitals account, you can safely ignore this email.
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Verify your email — HagoCapitals", _wrap(body))
@@ -523,6 +579,7 @@ def send_2fa_code_email(user, code: str) -> bool:
             change your password immediately and contact support.</p>
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Login verification — HagoCapitals", _wrap(body))
@@ -559,6 +616,7 @@ def send_password_reset_email(user, token: str, uid: str) -> bool:
             reset, no action is needed. Your current password remains unchanged.</p>
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Password reset — HagoCapitals", _wrap(body))
@@ -593,6 +651,7 @@ def send_password_changed_email(user) -> bool:
             your new password.
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Password changed — HagoCapitals", _wrap(body))
@@ -632,16 +691,13 @@ def send_admin_payment_intent_notification(user, currency: str, dollar_amount, c
             <tr><td class="label">Email</td><td class="value">{user.email}</td></tr>
             <tr><td class="label">User ID</td><td class="value">#{user.id}</td></tr>
             <tr><td class="label">Balance</td><td class="value">${user.balance}</td></tr>
-            <tr><td class="label">Is Trader</td><td class="value">{'Yes' if user.is_trader else 'No'}</td></tr>
         </table>
         <div class="notice">
             <p><strong>Note:</strong> This is a payment intent notification, not a confirmed deposit.
             Staff should follow up if no deposit is received within a reasonable time.</p>
         </div>
     </div>
-    <div class="footer">
-        <div class="footer-text">Admin notification &middot; Payment Intent &middot; {now}</div>
-    </div>
+    {_admin_footer_html(f"Admin notification &middot; Payment Intent &middot; {now}")}
     """
     subject = f"[HagoCapitals] Payment Intent — {user.email} — ${dollar_amount}"
     return send_email(admin_email, subject, _wrap(body))
@@ -692,9 +748,7 @@ def send_admin_deposit_notification(user, transaction) -> bool:
             <tr><td class="label">Balance</td><td class="value">${user.balance:,.2f}</td></tr>
         </table>
     </div>
-    <div class="footer">
-        <div class="footer-text">Admin notification &middot; Action required &middot; {now}</div>
-    </div>
+    {_admin_footer_html(f"Admin notification &middot; Action required &middot; {now}")}
     """
     units_str = f"{units_val:.8f}".rstrip("0").rstrip(".") if units_val > 0 and abs(units_val - amount_usd_val) > 0.0001 else str(transaction.amount_usd)
     subject = f"[HagoCapitals] Deposit — {user.email} — ${transaction.amount_usd:,.2f} ({units_str} {transaction.asset})"
@@ -749,6 +803,7 @@ def send_user_deposit_confirmation(user, transaction, wallet_name: str = "") -> 
             <a href="{frontend}/transactions" class="btn">View Transaction</a>
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Deposit Request Received — HagoCapitals", _wrap(body))
@@ -764,13 +819,15 @@ def send_user_withdrawal_confirmation(user, transaction, wallet_name: str = "") 
     asset_label = transaction.asset + (f" ({wallet_name})" if wallet_name else "")
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
 
-    addr = transaction.wallet_address or ""
-    masked_address = (addr[:6] + "..." + addr[-4:]) if len(addr) > 10 else addr
+    # Full address (not masked) — the user needs to be able to verify the
+    # exact destination they submitted, and this email is only ever sent to
+    # that same user.
+    addr = escape(transaction.wallet_address or "")
 
     destination_row = (
         f'<tr><td class="label">Destination</td>'
-        f'<td class="value" style="font-size:12px;font-family:monospace;">{masked_address}</td></tr>'
-        if masked_address else ""
+        f'<td class="value" style="font-size:12px;font-family:monospace;word-break:break-all;">{addr}</td></tr>'
+        if addr else ""
     )
 
     body = f"""
@@ -808,9 +865,62 @@ def send_user_withdrawal_confirmation(user, transaction, wallet_name: str = "") 
             <a href="{frontend}/transactions" class="btn">View Transaction</a>
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Withdrawal Request Submitted — HagoCapitals", _wrap(body))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Admin: withdrawal intent notification
+# ─────────────────────────────────────────────────────────────────────────────
+
+def send_admin_withdrawal_intent_notification(user, currency: str, dollar_amount, withdraw_from: str, address: str) -> bool:
+    admin_email = getattr(settings, "ADMIN_NOTIFICATION_EMAIL", settings.EMAIL_HOST_USER)
+    now = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
+    # `address` is raw, unvalidated user input straight from the request body —
+    # escape it before embedding in HTML so it can't inject markup into the
+    # admin's inbox. Shown in full (not truncated/masked) so staff can copy
+    # the exact destination for payout.
+    address = escape(address or "")
+
+    body = f"""
+    {_header_html()}
+    <div class="body-content">
+        <div style="margin-bottom:18px;"><span class="badge badge-info">Withdrawal Intent</span></div>
+        <div class="heading">Withdrawal Intent Received</div>
+        <div class="text">
+            A user has clicked "Confirm Withdrawal" and the request is being processed.
+            This is an early signal — a separate notification follows once the withdrawal is recorded.
+        </div>
+        <div class="amount-box withdraw">
+            <div class="amount">${dollar_amount}</div>
+            <div class="amount-label">{withdraw_from} &middot; {currency}</div>
+        </div>
+        <div class="section-title">Intent Details</div>
+        <table class="detail-table">
+            <tr><td class="label">Currency</td><td class="value">{currency}</td></tr>
+            <tr><td class="label">Amount (USD)</td><td class="value">${dollar_amount}</td></tr>
+            <tr><td class="label">Withdraw From</td><td class="value">{withdraw_from}</td></tr>
+            <tr><td class="label">Destination Address</td><td class="value" style="font-size:12px;font-family:monospace;word-break:break-all;">{address}</td></tr>
+            <tr><td class="label">Timestamp</td><td class="value">{now}</td></tr>
+        </table>
+        <div class="section-title">User Information</div>
+        <table class="detail-table">
+            <tr><td class="label">Name</td><td class="value">{user.first_name} {user.last_name}</td></tr>
+            <tr><td class="label">Email</td><td class="value">{user.email}</td></tr>
+            <tr><td class="label">User ID</td><td class="value">#{user.id}</td></tr>
+            <tr><td class="label">Balance</td><td class="value">${user.balance}</td></tr>
+        </table>
+        <div class="notice">
+            <p><strong>Note:</strong> This is a withdrawal intent notification, not a confirmation that
+            the withdrawal was recorded. Follow up if the confirmed withdrawal notification never arrives.</p>
+        </div>
+    </div>
+    {_admin_footer_html(f"Admin notification &middot; Withdrawal Intent &middot; {now}")}
+    """
+    subject = f"[HagoCapitals] Withdrawal Intent — {user.email} — ${dollar_amount}"
+    return send_email(admin_email, subject, _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -821,7 +931,7 @@ def send_admin_withdrawal_notification(user, transaction, payment_method=None) -
     admin_email = getattr(settings, "ADMIN_NOTIFICATION_EMAIL", settings.EMAIL_HOST_USER)
     now = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
 
-    method_type    = getattr(payment_method, "method_type", "Not specified") if payment_method else "Not specified"
+    method_type    = escape(getattr(payment_method, "method_type", "Not specified") if payment_method else "Not specified")
     payment_address = "N/A"
     if payment_method:
         payment_address = (
@@ -829,10 +939,13 @@ def send_admin_withdrawal_notification(user, transaction, payment_method=None) -
             or getattr(payment_method, "bank_account_number", None)
             or "N/A"
         )
+    # Shown in full (not truncated/masked) — staff need the exact destination
+    # to process the payout — and escaped since it's user-supplied.
+    payment_address = escape(payment_address)
 
     bank_row = ""
     if payment_method and getattr(payment_method, "bank_name", None):
-        bank_row = f"<tr><td class='label'>Bank</td><td class='value'>{payment_method.bank_name}</td></tr>"
+        bank_row = f"<tr><td class='label'>Bank</td><td class='value'>{escape(payment_method.bank_name)}</td></tr>"
 
     body = f"""
     {_header_html()}
@@ -859,7 +972,7 @@ def send_admin_withdrawal_notification(user, transaction, payment_method=None) -
         <div class="section-title">Payment Destination</div>
         <table class="detail-table">
             <tr><td class="label">Method</td><td class="value">{method_type}</td></tr>
-            <tr><td class="label">Address / Account</td><td class="value" style="font-size:12px;">{payment_address}</td></tr>
+            <tr><td class="label">Address / Account</td><td class="value" style="font-size:12px;font-family:monospace;word-break:break-all;">{payment_address}</td></tr>
             {bank_row}
         </table>
         <div class="section-title">User Information</div>
@@ -870,9 +983,7 @@ def send_admin_withdrawal_notification(user, transaction, payment_method=None) -
             <tr><td class="label">Remaining Balance</td><td class="value">${user.balance}</td></tr>
         </table>
     </div>
-    <div class="footer">
-        <div class="footer-text">Admin notification &middot; Urgent action required &middot; {now}</div>
-    </div>
+    {_admin_footer_html(f"Admin notification &middot; Urgent action required &middot; {now}")}
     """
     subject = f"[HagoCapitals] Withdrawal Request — {user.email} — ${transaction.amount_usd}"
     return send_email(admin_email, subject, _wrap(body))
@@ -920,6 +1031,7 @@ def send_user_deposit_approved_email(user, transaction) -> bool:
             <a href="{frontend}/transactions" class="btn">View Transactions</a>
         </div>
     </div>
+    {_signature_html()}
     {_footer_html(user.email)}
     """
     return send_email(user.email, "Deposit Approved — Funds Credited to Your Account", _wrap(body))
@@ -974,6 +1086,7 @@ def _build_custom_email_html(
         <div class="text">{message_html}</div>
         {cta_block}
     </div>
+    {_signature_html()}
     {_footer_html(email, social_links)}
     """
     return _wrap(body)
