@@ -211,7 +211,7 @@ class TraderSerializer(serializers.ModelSerializer):
     avatar_url    = serializers.SerializerMethodField()
     market_category = serializers.CharField(source="category")
     min_capital     = serializers.DecimalField(source="min_account_threshold", max_digits=18, decimal_places=2)
-    roi             = serializers.DecimalField(source="gain", max_digits=8, decimal_places=2)
+    roi             = serializers.DecimalField(source="gain", max_digits=10, decimal_places=2)
     followers_count = serializers.IntegerField(source="followers")
 
     class Meta:

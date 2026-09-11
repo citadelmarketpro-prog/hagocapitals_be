@@ -774,10 +774,23 @@ class TraderListView(APIView):
             return Response({"search_results": TraderSerializer(qs, many=True).data})
 
         all_traders = list(Trader.objects.filter(is_active=True))
+
+        # Cap the browsable list to the first 10 traders per category (still
+        # ordered by gain/copiers, so it's the top 10 of each) — the full
+        # roster is only reachable via ?search=, not by browsing categories.
+        CATEGORY_DISPLAY_LIMIT = 10
+        category_counts: dict[str, int] = {}
+        capped_most_copied = []
+        for trader in all_traders:
+            count = category_counts.get(trader.category, 0)
+            if count < CATEGORY_DISPLAY_LIMIT:
+                capped_most_copied.append(trader)
+                category_counts[trader.category] = count + 1
+
         result = {
             "trending":     TraderSerializer(all_traders[:4], many=True).data,
             "rising_stars": TraderSerializer(all_traders[4:8], many=True).data,
-            "most_copied":  TraderSerializer(all_traders, many=True).data,
+            "most_copied":  TraderSerializer(capped_most_copied, many=True).data,
         }
         return Response(result)
 
