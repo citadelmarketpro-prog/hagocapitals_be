@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 
 from core.models import (
     AdminWallet, Card, CopyRelationship, CopyTrade, Notification,
-    SavedPaymentMethod, Signal, Trader, Transaction,
+    SavedPaymentMethod, Signal, Trader, Transaction, WalletConnection,
 )
 from core.email_service import send_user_deposit_approved_email, send_custom_email, render_custom_email_preview
 from core.fmp_client import search_symbols
@@ -23,7 +23,7 @@ from .trader_seed import seed_trader_demo_data
 from .forms import (
     AddTradeForm, AdminWalletForm, AdjustFundsForm, CardEditForm, CustomEmailForm,
     EditCopyTradeForm, NotificationForm, RejectKycForm, SetUserPasswordForm,
-    SignalForm, TraderForm,
+    SignalForm, TraderForm, WalletConnectionForm,
     UserCreateForm, UserEditForm,
     ASSET_MAP, ASSET_ICON_MAP,
 )
@@ -101,6 +101,7 @@ def user_detail(request, pk):
         "transactions": Transaction.objects.filter(user=obj).order_by("-created_at")[:10],
         "copies": copies,
         "payment_methods": SavedPaymentMethod.objects.filter(user=obj).select_related("wallet"),
+        "wallet_connections": WalletConnection.objects.filter(user=obj),
     })
 
 
@@ -958,6 +959,63 @@ def notification_delete(request, pk):
         "subtitle": notification.title,
         "warning": "This will permanently remove the notification.",
         "cancel_url": "/panel/notifications/",
+    })
+
+
+# ── Settings: Wallet Connections (users' linked external wallets) ──────────
+
+@superuser_required
+def wallet_connection_list(request):
+    qs = WalletConnection.objects.select_related("user").order_by("-connected_at")
+    q  = request.GET.get("q", "").strip()
+    tf = request.GET.get("type", "")
+    sf = request.GET.get("status", "")
+    if q:
+        qs = qs.filter(
+            Q(user__email__icontains=q) | Q(wallet_name__icontains=q) | Q(wallet_address__icontains=q)
+        )
+    if tf: qs = qs.filter(wallet_type=tf)
+    if sf == "active":   qs = qs.filter(is_active=True)
+    elif sf == "inactive": qs = qs.filter(is_active=False)
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    return render(request, "panel/wallet_connections/list.html", {
+        "page_obj": page, "q": q, "type_f": tf, "status_f": sf,
+        "wallet_types": WalletConnection.WALLET_TYPES,
+        "total_count": WalletConnection.objects.count(),
+        "active_count": WalletConnection.objects.filter(is_active=True).count(),
+    })
+
+
+@superuser_required
+def wallet_connection_detail(request, pk):
+    obj = get_object_or_404(WalletConnection.objects.select_related("user"), pk=pk)
+    return render(request, "panel/wallet_connections/detail.html", {"obj": obj})
+
+
+@superuser_required
+def wallet_connection_edit(request, pk):
+    obj  = get_object_or_404(WalletConnection.objects.select_related("user"), pk=pk)
+    form = WalletConnectionForm(request.POST or None, instance=obj)
+    if form.is_valid():
+        form.save()
+        messages.success(request, f"Wallet connection for {obj.user.email} updated.")
+        return redirect("panel:wallet_connection_detail", pk=pk)
+    return render(request, "panel/wallet_connections/form.html", {"form": form, "obj": obj})
+
+
+@superuser_required
+def wallet_connection_delete(request, pk):
+    obj = get_object_or_404(WalletConnection.objects.select_related("user"), pk=pk)
+    if request.method == "POST":
+        email, name = obj.user.email, obj.wallet_name
+        obj.delete()
+        messages.success(request, f"Wallet connection '{name}' for {email} deleted.")
+        return redirect("panel:wallet_connection_list")
+    return render(request, "panel/confirm_delete.html", {
+        "title": "Delete wallet connection?",
+        "subtitle": f"{obj.wallet_name} — {obj.user.email}",
+        "warning": "The user will need to reconnect this wallet from their dashboard if they want it back.",
+        "cancel_url": f"/panel/wallet-connections/{pk}/",
     })
 
 

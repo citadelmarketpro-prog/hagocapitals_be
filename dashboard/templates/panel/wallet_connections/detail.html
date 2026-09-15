@@ -1,0 +1,47 @@
+{% extends "panel/base.html" %}
+{% block title %}Wallet Connection — HagoCapitals Admin{% endblock %}
+{% block heading %}Wallet Connection Detail{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:wallet_connection_list' %}" style="color:#6366f1;">Wallet Connections</a> / {{ obj.wallet_name }}{% endblock %}
+{% block header_actions %}<a href="{% url 'panel:wallet_connection_edit' obj.pk %}" class="btn btn-ghost text-xs">Edit</a>{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="panel-card p-6 mb-5">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Owner</p>
+        <a href="{% url 'panel:user_detail' obj.user.pk %}" class="font-medium hover:underline" style="color:#6366f1;">{{ obj.user.email }}</a>
+      </div>
+      {% if obj.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red">Inactive</span>{% endif %}
+    </div>
+
+    <div class="grid grid-cols-2 gap-y-4 gap-x-6 py-4 border-y" style="border-color:#263353;">
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Wallet</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.wallet_name }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Wallet Type</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.get_wallet_type_display }}</p>
+      </div>
+      <div class="col-span-2">
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Wallet Address</p>
+        <p class="font-mono text-xs break-all p-2 rounded" style="background:#131c2e; color:#f8fafc;">{{ obj.wallet_address }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Connected</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.connected_at|date:"M d, Y H:i" }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Last Verified</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.last_verified|date:"M d, Y H:i" }}</p>
+      </div>
+    </div>
+  </div>
+
+  <a href="{% url 'panel:wallet_connection_list' %}" class="btn btn-ghost text-xs">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to list
+  </a>
+</div>
+{% endblock %}

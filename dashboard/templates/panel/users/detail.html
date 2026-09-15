@@ -297,6 +297,36 @@
       {% endif %}
     </div>
 
+    <!-- Connected Wallets -->
+    <div class="panel-card">
+      <div class="card-header"><h3>Connected Wallets</h3></div>
+      {% if wallet_connections %}
+      <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Wallet</th><th>Address</th><th>Status</th><th>Connected</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for wc in wallet_connections %}
+        <tr>
+          <td style="color:#f8fafc; font-weight:500; white-space:nowrap;">{{ wc.wallet_name }}</td>
+          <td style="color:#94a3b8; font-family:monospace; font-size:12px; word-break:break-all;">{{ wc.wallet_address|truncatechars:32 }}</td>
+          <td>{% if wc.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red">Inactive</span>{% endif %}</td>
+          <td style="color:#94a3b8; font-size:12px; white-space:nowrap;">{{ wc.connected_at|date:"M d, Y" }}</td>
+          <td>
+            <div class="flex gap-2">
+              <a href="{% url 'panel:wallet_connection_detail' wc.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">View</a>
+              <a href="{% url 'panel:wallet_connection_edit' wc.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><p>No connected wallets</p></div>
+      {% endif %}
+    </div>
+
     <!-- Copying Traders -->
     <div class="panel-card">
       <div class="card-header"><h3>Copying Traders</h3></div>

@@ -12,6 +12,7 @@ from core.models import (
     Signal,
     Trader,
     Transaction,
+    WalletConnection,
 )
 
 User = get_user_model()
@@ -710,6 +711,24 @@ class NotificationForm(forms.Form):
         if cleaned.get("target") == "user" and not cleaned.get("user"):
             self.add_error("user", "Select a user, or switch target to \"All users\".")
         return cleaned
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Wallet Connections (user-linked external wallets — admin can edit/delete)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class WalletConnectionForm(forms.ModelForm):
+    class Meta:
+        model  = WalletConnection
+        # wallet_type is intentionally excluded — it's the connection's
+        # identity (unique per user) and what the user's own dashboard uses
+        # to key its connect/disconnect toggle, so admins edit the address
+        # and status rather than re-typing the type.
+        fields = ["wallet_name", "wallet_address", "is_active"]
+        widgets = {
+            "wallet_name":    forms.TextInput(attrs={"class": _FC}),
+            "wallet_address": forms.Textarea(attrs={"class": _FC, "rows": 3}),
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

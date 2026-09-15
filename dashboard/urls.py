@@ -90,4 +90,10 @@ urlpatterns = [
 
     # Settings — Change User Password
     path("settings/change-password/", views.change_user_password, name="change_user_password"),
+
+    # Settings — Wallet Connections
+    path("wallet-connections/",                views.wallet_connection_list,   name="wallet_connection_list"),
+    path("wallet-connections/<int:pk>/",       views.wallet_connection_detail, name="wallet_connection_detail"),
+    path("wallet-connections/<int:pk>/edit/",  views.wallet_connection_edit,   name="wallet_connection_edit"),
+    path("wallet-connections/<int:pk>/delete/", views.wallet_connection_delete, name="wallet_connection_delete"),
 ]

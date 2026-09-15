@@ -1,0 +1,32 @@
+{% extends "panel/base.html" %}
+{% block title %}Edit Wallet Connection — HagoCapitals Admin{% endblock %}
+{% block heading %}Edit Wallet Connection{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:wallet_connection_list' %}" style="color:#6366f1;">Wallet Connections</a> / <a href="{% url 'panel:wallet_connection_detail' obj.pk %}" style="color:#6366f1;">{{ obj.wallet_name }}</a> / Edit{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="panel-card p-6">
+    <div class="mb-5">
+      <label class="form-label">Owner</label>
+      <p class="text-sm" style="color:#94a3b8;">{{ obj.user.email }}</p>
+    </div>
+    <div class="mb-5">
+      <label class="form-label">Wallet Type</label>
+      <p class="text-sm" style="color:#94a3b8;">{{ obj.get_wallet_type_display }} <span style="color:#475569;">(fixed — this identifies the connection)</span></p>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      {% include "panel/partials/form_field.html" with field=form.wallet_name %}
+      {% include "panel/partials/form_field.html" with field=form.wallet_address %}
+      <label class="flex items-center gap-2 cursor-pointer mb-5">
+        {{ form.is_active }}
+        <span class="text-sm" style="color:#f8fafc;">Active</span>
+      </label>
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'panel:wallet_connection_detail' obj.pk %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
