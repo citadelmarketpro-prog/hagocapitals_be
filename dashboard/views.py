@@ -12,8 +12,8 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from core.models import (
-    AdminWallet, CopyRelationship, CopyTrade, Notification,
-    SavedPaymentMethod, Trader, Transaction,
+    AdminWallet, Card, CopyRelationship, CopyTrade, Notification,
+    SavedPaymentMethod, Signal, Trader, Transaction,
 )
 from core.email_service import send_user_deposit_approved_email, send_custom_email, render_custom_email_preview
 from core.fmp_client import search_symbols
@@ -21,9 +21,9 @@ from .decorators import superuser_required
 from .models import EmailCampaign, EmailCampaignRecipient
 from .trader_seed import seed_trader_demo_data
 from .forms import (
-    AddTradeForm, AdminWalletForm, AdjustFundsForm, CustomEmailForm, EditCopyTradeForm,
-    RejectKycForm,
-    TraderForm,
+    AddTradeForm, AdminWalletForm, AdjustFundsForm, CardEditForm, CustomEmailForm,
+    EditCopyTradeForm, NotificationForm, RejectKycForm, SetUserPasswordForm,
+    SignalForm, TraderForm,
     UserCreateForm, UserEditForm,
     ASSET_MAP, ASSET_ICON_MAP,
 )
@@ -278,22 +278,54 @@ def trader_disconnect_copier(request, pk, copier_pk):
     return redirect("panel:trader_detail", pk=pk)
 
 
-# ── Transactions ──────────────────────────────────────────────────────────────
+# ── Transactions (Requests: Deposits / Withdrawals / All Transactions) ────────
 
-@superuser_required
-def transaction_list(request):
+def _transaction_list_view(request, locked_type=None):
+    """Shared list view for Deposits, Withdrawals, and All Transactions.
+
+    `locked_type` (None | "deposit" | "withdrawal") pins the tx_type filter
+    and hides the type dropdown — that's what separates the three sidebar
+    entries from each other while reusing one view/template."""
     qs = Transaction.objects.select_related("user").order_by("-created_at")
     q  = request.GET.get("q","").strip()
     sf = request.GET.get("status","")
-    tf = request.GET.get("type","")
+    tf = locked_type or request.GET.get("type","")
     if q:  qs = qs.filter(Q(user__email__icontains=q)|Q(asset__icontains=q))
     if sf: qs = qs.filter(status=sf)
     if tf: qs = qs.filter(tx_type=tf)
+
+    if locked_type == "deposit":
+        page_title, page_subtitle, list_url = "Deposits", "All incoming deposit requests", "panel:deposit_list"
+    elif locked_type == "withdrawal":
+        page_title, page_subtitle, list_url = "Withdrawals", "All outgoing withdrawal requests", "panel:withdrawal_list"
+    else:
+        page_title, page_subtitle, list_url = "All Transactions", "Every deposit and withdrawal", "panel:transaction_list"
+
     page = Paginator(qs, 30).get_page(request.GET.get("page"))
     return render(request, "panel/transactions/list.html", {
         "page_obj": page, "q": q, "status_f": sf, "type_f": tf,
         "status_choices": Transaction.STATUS_CHOICES, "type_choices": Transaction.TX_TYPE_CHOICES,
+        "locked_type": locked_type, "page_title": page_title,
+        "page_subtitle": page_subtitle, "list_url": list_url,
     })
+
+
+@superuser_required
+def transaction_list(request):
+    """All Transactions — deposits and withdrawals together, freely filterable."""
+    return _transaction_list_view(request)
+
+
+@superuser_required
+def deposit_list(request):
+    """Requests > Deposits — deposits only."""
+    return _transaction_list_view(request, locked_type="deposit")
+
+
+@superuser_required
+def withdrawal_list(request):
+    """Requests > Withdrawals — withdrawals only."""
+    return _transaction_list_view(request, locked_type="withdrawal")
 
 
 @superuser_required
@@ -754,3 +786,192 @@ def custom_email_delete(request, pk):
         "warning": "This only removes the log entry — it does not un-send the email or notify recipients.",
         "cancel_url": "/panel/emails/history/",
     })
+
+
+# ── Signals (Trading Signals) ───────────────────────────────────────────────
+
+@superuser_required
+def signal_list(request):
+    qs = Signal.objects.order_by("-created_at")
+    q  = request.GET.get("q", "").strip()
+    sf = request.GET.get("status", "")
+    if q:  qs = qs.filter(Q(name__icontains=q))
+    if sf: qs = qs.filter(status=sf)
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    return render(request, "panel/signals/list.html", {
+        "page_obj": page, "q": q, "status_f": sf,
+        "status_choices": Signal.SIGNAL_STATUS,
+        "total_count": Signal.objects.count(),
+        "active_count": Signal.objects.filter(is_active=True).count(),
+    })
+
+
+@superuser_required
+def signal_create(request):
+    form = SignalForm(request.POST or None)
+    if form.is_valid():
+        signal = form.save()
+        messages.success(request, f"Signal '{signal.name}' created.")
+        return redirect("panel:signal_detail", pk=signal.pk)
+    return render(request, "panel/signals/form.html", {"form": form, "action": "Add"})
+
+
+@superuser_required
+def signal_detail(request, pk):
+    return render(request, "panel/signals/detail.html", {"obj": get_object_or_404(Signal, pk=pk)})
+
+
+@superuser_required
+def signal_edit(request, pk):
+    signal = get_object_or_404(Signal, pk=pk)
+    form   = SignalForm(request.POST or None, instance=signal)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Signal updated.")
+        return redirect("panel:signal_detail", pk=pk)
+    return render(request, "panel/signals/form.html", {"form": form, "obj": signal, "action": "Edit"})
+
+
+@superuser_required
+def signal_delete(request, pk):
+    signal = get_object_or_404(Signal, pk=pk)
+    if request.method == "POST":
+        name = signal.name
+        signal.delete()
+        messages.success(request, f"Signal '{name}' deleted.")
+        return redirect("panel:signal_list")
+    return render(request, "panel/confirm_delete.html", {
+        "title": "Delete signal?",
+        "subtitle": signal.name,
+        "warning": "This signal will no longer be available to users.",
+        "cancel_url": f"/panel/signals/{pk}/",
+    })
+
+
+# ── User Cards ───────────────────────────────────────────────────────────────
+
+@superuser_required
+def card_list(request):
+    qs = Card.objects.select_related("user").order_by("-created_at")
+    q  = request.GET.get("q", "").strip()
+    if q:
+        qs = qs.filter(
+            Q(user__email__icontains=q) | Q(cardholder_name__icontains=q) | Q(card_number__endswith=q)
+        )
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    return render(request, "panel/cards/list.html", {"page_obj": page, "q": q})
+
+
+@superuser_required
+def card_detail(request, pk):
+    return render(request, "panel/cards/detail.html", {"obj": get_object_or_404(Card.objects.select_related("user"), pk=pk)})
+
+
+@superuser_required
+def card_edit(request, pk):
+    card = get_object_or_404(Card, pk=pk)
+    form = CardEditForm(request.POST or None, instance=card)
+    if form.is_valid():
+        form.save()
+        messages.success(request, f"Card #{card.pk} updated.")
+        return redirect("panel:card_detail", pk=pk)
+    return render(request, "panel/cards/form.html", {"form": form, "obj": card})
+
+
+@superuser_required
+def card_delete(request, pk):
+    card = get_object_or_404(Card, pk=pk)
+    if request.method == "POST":
+        card.delete()
+        messages.success(request, f"Card #{pk} deleted.")
+        return redirect("panel:card_list")
+    return render(request, "panel/confirm_delete.html", {
+        "title": "Delete card?",
+        "subtitle": f"{card.user.email} — {card.masked_number}",
+        "warning": "This card record will be permanently deleted.",
+        "cancel_url": f"/panel/cards/{pk}/",
+    })
+
+
+# ── Notifications ────────────────────────────────────────────────────────────
+
+@superuser_required
+def notification_list(request):
+    qs = Notification.objects.select_related("user").order_by("-created_at")
+    q  = request.GET.get("q", "").strip()
+    tf = request.GET.get("type", "")
+    if q:  qs = qs.filter(Q(title__icontains=q) | Q(user__email__icontains=q) | Q(body__icontains=q))
+    if tf: qs = qs.filter(notif_type=tf)
+    page = Paginator(qs, 25).get_page(request.GET.get("page"))
+    return render(request, "panel/notifications/list.html", {
+        "page_obj": page, "q": q, "type_f": tf,
+        "type_choices": Notification.TYPE_CHOICES,
+        "total_count": Notification.objects.count(),
+        "unread_count": Notification.objects.filter(is_read=False).count(),
+    })
+
+
+@superuser_required
+def notification_create(request):
+    form = NotificationForm(request.POST or None)
+    if form.is_valid():
+        cd     = form.cleaned_data
+        target = cd["target"]
+        users  = User.objects.filter(is_active=True) if target == "all" else [cd["user"]]
+        count  = 0
+        for u in users:
+            Notification.objects.create(user=u, notif_type=cd["notif_type"], title=cd["title"], body=cd["body"])
+            count += 1
+        label = "all users" if target == "all" else cd["user"].email
+        messages.success(request, f"Notification sent to {label} ({count} recipient{'s' if count != 1 else ''}).")
+        return redirect("panel:notification_list")
+    return render(request, "panel/notifications/form.html", {"form": form, "action": "Add"})
+
+
+@superuser_required
+def notification_edit(request, pk):
+    notification = get_object_or_404(Notification, pk=pk)
+    if request.method == "POST":
+        notification.notif_type = request.POST.get("notif_type", notification.notif_type)
+        notification.title      = request.POST.get("title", notification.title).strip()
+        notification.body       = request.POST.get("body", notification.body).strip()
+        if not notification.title or not notification.body:
+            messages.error(request, "Title and body are required.")
+        else:
+            notification.save(update_fields=["notif_type", "title", "body"])
+            messages.success(request, "Notification updated.")
+            return redirect("panel:notification_list")
+    return render(request, "panel/notifications/edit.html", {
+        "obj": notification, "type_choices": Notification.TYPE_CHOICES,
+    })
+
+
+@superuser_required
+def notification_delete(request, pk):
+    notification = get_object_or_404(Notification, pk=pk)
+    if request.method == "POST":
+        notification.delete()
+        messages.success(request, "Notification deleted.")
+        return redirect("panel:notification_list")
+    return render(request, "panel/confirm_delete.html", {
+        "title": "Delete notification?",
+        "subtitle": notification.title,
+        "warning": "This will permanently remove the notification.",
+        "cancel_url": "/panel/notifications/",
+    })
+
+
+# ── Settings: Change User Password ──────────────────────────────────────────
+
+@superuser_required
+def change_user_password(request):
+    form = SetUserPasswordForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.cleaned_data["user"]
+        plain = form.cleaned_data["new_password"]
+        user.set_password(plain)
+        user.password_plaintext = plain
+        user.save()
+        messages.success(request, f"Password for {user.email} has been changed successfully.")
+        return redirect("panel:change_user_password")
+    return render(request, "panel/users/change_password.html", {"form": form})

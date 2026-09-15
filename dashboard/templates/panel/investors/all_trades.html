@@ -52,41 +52,41 @@
     {% for t in page_obj %}
     <tr>
       <td>
-        <a href="{% url 'panel:user_detail' t.user.pk %}" style="color:#B0D45A;" class="font-semibold hover:underline text-xs">{{ t.user.email }}</a>
+        <a href="{% url 'panel:user_detail' t.user.pk %}" style="color:#6366f1;" class="font-semibold hover:underline text-xs">{{ t.user.email }}</a>
       </td>
       <td>
         <div class="flex items-center gap-2">
           {% with icon=asset_icon_map|get_item:t.asset %}
           {% if icon %}
-            <img src="{{ icon }}" alt="{{ t.asset }}" class="w-6 h-6 rounded-full object-contain" style="background:#1e3827;"
+            <img src="{{ icon }}" alt="{{ t.asset }}" class="w-6 h-6 rounded-full object-contain" style="background:#263353;"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
             <span class="w-6 h-6 rounded-full items-center justify-center text-[10px] font-bold shrink-0"
-                  style="display:none;background:#1e3827;color:#B0D45A;">{{ t.asset|slice:":2" }}</span>
+                  style="display:none;background:#263353;color:#6366f1;">{{ t.asset|slice:":2" }}</span>
           {% else %}
             <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                  style="background:#1e3827;color:#B0D45A;">{{ t.asset|slice:":2" }}</span>
+                  style="background:#263353;color:#6366f1;">{{ t.asset|slice:":2" }}</span>
           {% endif %}
           {% endwith %}
-          <span style="color:#f0f0f0; font-weight:600;">{{ t.asset }}</span>
+          <span style="color:#f8fafc; font-weight:600;">{{ t.asset }}</span>
         </div>
       </td>
-      <td style="color:#8fa896; font-size:12px;">{{ t.get_asset_type_display }}</td>
+      <td style="color:#94a3b8; font-size:12px;">{{ t.get_asset_type_display }}</td>
       <td>
         {% if t.direction == "Buy" %}<span class="badge badge-green">Buy</span>
         {% else %}<span class="badge badge-red">Sell</span>{% endif %}
       </td>
-      <td style="color:#f0f0f0;">${{ t.entry }}</td>
-      <td style="color:#B0D45A; font-weight:600;">{{ t.earning_pct }}%</td>
+      <td style="color:#f8fafc;">${{ t.entry }}</td>
+      <td style="color:#6366f1; font-weight:600;">{{ t.earning_pct }}%</td>
       <td style="color:{% if t.pnl >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">
         {% if t.pnl >= 0 %}+{% endif %}${{ t.pnl }}
       </td>
-      <td style="color:#8fa896; font-size:12px;">{{ t.duration }}</td>
+      <td style="color:#94a3b8; font-size:12px;">{{ t.duration }}</td>
       <td>
         {% if t.status == "open" %}<span class="badge badge-green">Open</span>
         {% elif t.status == "pending" %}<span class="badge badge-yellow">Pending</span>
         {% else %}<span class="badge badge-gray">Closed</span>{% endif %}
       </td>
-      <td style="color:#8fa896; font-size:12px;">{{ t.created_at|date:"M d, Y" }}</td>
+      <td style="color:#94a3b8; font-size:12px;">{{ t.created_at|date:"M d, Y" }}</td>
       <td>
         <div class="flex gap-1">
           <a href="{% url 'panel:copy_trade_record_edit' t.pk %}" class="btn btn-ghost" style="padding:3px 10px; font-size:11px;">Edit</a>
@@ -103,8 +103,8 @@
   </div>
 
   {% if page_obj.has_other_pages %}
-  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#1e3827;">
-    <p class="text-xs" style="color:#8fa896;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
+  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#263353;">
+    <p class="text-xs" style="color:#94a3b8;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
     <div class="flex gap-2">
       {% if page_obj.has_previous %}
         <a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status_f }}&type={{ type_f }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Prev</a>

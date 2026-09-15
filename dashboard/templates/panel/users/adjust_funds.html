@@ -1,24 +1,24 @@
 {% extends "panel/base.html" %}
 {% block title %}Adjust Funds — {{ obj.email }}{% endblock %}
 {% block heading %}Adjust Funds{% endblock %}
-{% block breadcrumb %}<a href="{% url 'panel:user_list' %}" style="color:#B0D45A;">Users</a> / <a href="{% url 'panel:user_detail' obj.pk %}" style="color:#B0D45A;">{{ obj.email }}</a> / Adjust Funds{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:user_list' %}" style="color:#6366f1;">Users</a> / <a href="{% url 'panel:user_detail' obj.pk %}" style="color:#6366f1;">{{ obj.email }}</a> / Adjust Funds{% endblock %}
 
 {% block content %}
 <div class="max-w-md">
   <!-- Current balances -->
   <div class="grid grid-cols-2 gap-4 mb-6">
     <div class="stat-card text-center">
-      <p class="text-xs mb-1" style="color:#8fa896;">Current Balance</p>
+      <p class="text-xs mb-1" style="color:#94a3b8;">Current Balance</p>
       <p class="text-base font-bold truncate" title="${{ obj.balance|floatformat:2 }}" style="color:#22c55e;">${{ obj.balance|floatformat:2 }}</p>
     </div>
     <div class="stat-card text-center">
-      <p class="text-xs mb-1" style="color:#8fa896;">Current Profit</p>
-      <p class="text-base font-bold truncate" title="${{ obj.roi|floatformat:2 }}" style="color:#B0D45A;">${{ obj.roi|floatformat:2 }}</p>
+      <p class="text-xs mb-1" style="color:#94a3b8;">Current Profit</p>
+      <p class="text-base font-bold truncate" title="${{ obj.roi|floatformat:2 }}" style="color:#6366f1;">${{ obj.roi|floatformat:2 }}</p>
     </div>
   </div>
 
   <div class="panel-card p-6">
-    <h3 class="text-sm font-bold mb-5" style="color:#f0f0f0;">Adjust for <span style="color:#B0D45A;">{{ obj.email }}</span></h3>
+    <h3 class="text-sm font-bold mb-5" style="color:#f8fafc;">Adjust for <span style="color:#6366f1;">{{ obj.email }}</span></h3>
     <form method="post">
       {% csrf_token %}
       <div class="mb-5">
@@ -31,17 +31,17 @@
       <div class="mb-5">
         <label class="form-label">Operation</label>
         <div class="grid grid-cols-3 gap-2">
-          <label class="flex items-center gap-2 p-3 rounded-lg cursor-pointer border" style="border-color:#1e3827; background:#0d2016;">
-            <input type="radio" name="mode" value="add" checked style="accent-color:#B0D45A;" />
-            <span class="text-sm" style="color:#f0f0f0;">Add</span>
+          <label class="flex items-center gap-2 p-3 rounded-lg cursor-pointer border" style="border-color:#263353; background:#131c2e;">
+            <input type="radio" name="mode" value="add" checked style="accent-color:#6366f1;" />
+            <span class="text-sm" style="color:#f8fafc;">Add</span>
           </label>
-          <label class="flex items-center gap-2 p-3 rounded-lg cursor-pointer border" style="border-color:#1e3827; background:#0d2016;">
-            <input type="radio" name="mode" value="subtract" style="accent-color:#B0D45A;" />
-            <span class="text-sm" style="color:#f0f0f0;">Subtract</span>
+          <label class="flex items-center gap-2 p-3 rounded-lg cursor-pointer border" style="border-color:#263353; background:#131c2e;">
+            <input type="radio" name="mode" value="subtract" style="accent-color:#6366f1;" />
+            <span class="text-sm" style="color:#f8fafc;">Subtract</span>
           </label>
-          <label class="flex items-center gap-2 p-3 rounded-lg cursor-pointer border" style="border-color:#1e3827; background:#0d2016;">
-            <input type="radio" name="mode" value="set" style="accent-color:#B0D45A;" />
-            <span class="text-sm" style="color:#f0f0f0;">Set exact</span>
+          <label class="flex items-center gap-2 p-3 rounded-lg cursor-pointer border" style="border-color:#263353; background:#131c2e;">
+            <input type="radio" name="mode" value="set" style="accent-color:#6366f1;" />
+            <span class="text-sm" style="color:#f8fafc;">Set exact</span>
           </label>
         </div>
       </div>

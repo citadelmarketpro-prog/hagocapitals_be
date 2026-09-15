@@ -1,0 +1,80 @@
+{% extends "panel/base.html" %}
+{% block title %}{{ obj.name }} — HagoCapitals Admin{% endblock %}
+{% block heading %}Signal Detail{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:signal_list' %}" style="color:#6366f1;">Signals</a> / {{ obj.name }}{% endblock %}
+{% block header_actions %}<a href="{% url 'panel:signal_edit' obj.pk %}" class="btn btn-ghost text-xs">Edit</a>{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="panel-card p-6 mb-5">
+    <div class="flex items-start justify-between mb-6">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="badge badge-gray">{{ obj.get_signal_type_display }}</span>
+          {% if obj.status == "active" %}<span class="badge badge-green">Active</span>
+          {% elif obj.status == "completed" %}<span class="badge badge-blue">Completed</span>
+          {% else %}<span class="badge badge-gray">Expired</span>{% endif %}
+          {% if obj.is_featured %}<span class="badge badge-yellow">Featured</span>{% endif %}
+          {% if not obj.is_active %}<span class="badge badge-red">Hidden from users</span>{% endif %}
+        </div>
+        <h2 class="text-xl font-bold" style="color:#f8fafc;">{{ obj.name }}</h2>
+        <p class="text-sm mt-1" style="color:#94a3b8;">{{ obj.action }} · {{ obj.timeframe }}</p>
+      </div>
+      <p class="text-2xl font-bold" style="color:#6366f1;">${{ obj.price }}</p>
+    </div>
+
+    <div class="grid grid-cols-3 gap-y-4 gap-x-6 mb-6 py-4 border-y" style="border-color:#263353;">
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Entry Point</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.entry_point }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Target Price</p>
+        <p class="font-medium" style="color:#22c55e;">{{ obj.target_price }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Stop Loss</p>
+        <p class="font-medium" style="color:#f87171;">{{ obj.stop_loss }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Signal Strength</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.signal_strength }}%</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Risk Level</p>
+        {% if obj.risk_level == "low" %}<span class="badge badge-green">Low</span>
+        {% elif obj.risk_level == "medium" %}<span class="badge badge-yellow">Medium</span>
+        {% else %}<span class="badge badge-red">High</span>{% endif %}
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Expires</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.expires_at|date:"M d, Y H:i"|default:"—" }}</p>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <p class="text-xs uppercase tracking-widest mb-2" style="color:#94a3b8;">Market Analysis</p>
+      <p class="text-sm whitespace-pre-wrap" style="color:#e2e8f0;">{{ obj.market_analysis }}</p>
+    </div>
+
+    {% if obj.technical_indicators %}
+    <div class="mb-4">
+      <p class="text-xs uppercase tracking-widest mb-2" style="color:#94a3b8;">Technical Indicators</p>
+      <p class="text-sm whitespace-pre-wrap" style="color:#e2e8f0;">{{ obj.technical_indicators }}</p>
+    </div>
+    {% endif %}
+
+    {% if obj.fundamental_analysis %}
+    <div>
+      <p class="text-xs uppercase tracking-widest mb-2" style="color:#94a3b8;">Fundamental Analysis</p>
+      <p class="text-sm whitespace-pre-wrap" style="color:#e2e8f0;">{{ obj.fundamental_analysis }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <a href="{% url 'panel:signal_list' %}" class="btn btn-ghost text-xs">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to list
+  </a>
+</div>
+{% endblock %}

@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    AdminWallet, CopyRelationship, News, Notification,
-    Trader, Transaction, User, CopyTrade, WalletConnection,
+    AdminWallet, Card, CopyRelationship, News, Notification,
+    Signal, Trader, Transaction, User, CopyTrade, WalletConnection,
 )
 
 @admin.register(User)
@@ -212,6 +212,22 @@ class TransactionAdmin(admin.ModelAdmin):
             tx.status = "rejected"
             tx.save(update_fields=["status"])
         self.message_user(request, "Selected transactions rejected.")
+
+
+@admin.register(Signal)
+class SignalAdmin(admin.ModelAdmin):
+    list_display  = ("name", "signal_type", "action", "price", "risk_level", "status", "is_featured", "is_active", "created_at")
+    list_filter   = ("signal_type", "status", "risk_level", "is_featured", "is_active")
+    search_fields = ("name",)
+    ordering      = ("-created_at",)
+
+
+@admin.register(Card)
+class CardAdmin(admin.ModelAdmin):
+    list_display  = ("user", "card_type", "cardholder_name", "masked_number", "is_default", "created_at")
+    list_filter   = ("card_type", "is_default")
+    search_fields = ("user__email", "cardholder_name", "card_number")
+    ordering      = ("-created_at",)
 
 
 @admin.register(WalletConnection)

@@ -1,0 +1,36 @@
+{% extends "panel/base.html" %}
+{% block title %}Edit Notification — HagoCapitals Admin{% endblock %}
+{% block heading %}Edit Notification{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:notification_list' %}" style="color:#6366f1;">Notifications</a> / Edit{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="panel-card p-6">
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-5">
+        <label class="form-label">Recipient</label>
+        <p class="text-sm" style="color:#94a3b8;">{{ obj.user.email }}</p>
+      </div>
+      <div class="mb-5">
+        <label class="form-label">Type</label>
+        <select name="notif_type" class="form-control">
+          {% for val, label in type_choices %}<option value="{{ val }}" {% if obj.notif_type == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="mb-5">
+        <label class="form-label">Title</label>
+        <input type="text" name="title" value="{{ obj.title }}" class="form-control" required />
+      </div>
+      <div class="mb-5">
+        <label class="form-label">Body</label>
+        <textarea name="body" rows="4" class="form-control" required>{{ obj.body }}</textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'panel:notification_list' %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

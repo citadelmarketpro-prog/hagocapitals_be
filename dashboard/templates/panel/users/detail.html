@@ -2,7 +2,7 @@
 {% load humanize %}
 {% block title %}{{ obj.email }} — HagoCapitals Admin{% endblock %}
 {% block heading %}User Detail{% endblock %}
-{% block breadcrumb %}<a href="{% url 'panel:user_list' %}" style="color:#B0D45A;">Users</a> / <span style="word-break:break-all;">{{ obj.email }}</span>{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:user_list' %}" style="color:#6366f1;">Users</a> / <span style="word-break:break-all;">{{ obj.email }}</span>{% endblock %}
 {% block header_actions %}
   <a href="{% url 'panel:user_edit' obj.pk %}" class="btn btn-ghost text-xs">Edit</a>
   <a href="{% url 'panel:user_adjust_funds' obj.pk %}" class="btn btn-primary text-xs">Adjust Funds</a>
@@ -22,72 +22,72 @@
         {% if obj.avatar %}
           <img src="{{ obj.avatar.url }}" class="w-14 h-14 rounded-full object-cover shrink-0" />
         {% else %}
-          <div class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shrink-0" style="background:#1e3827; color:#B0D45A;">
+          <div class="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shrink-0" style="background:#263353; color:#6366f1;">
             {{ obj.email|first|upper }}
           </div>
         {% endif %}
         <div class="min-w-0">
-          <h2 class="text-sm font-bold truncate" style="color:#f0f0f0;">
+          <h2 class="text-sm font-bold truncate" style="color:#f8fafc;">
             {% if obj.first_name or obj.last_name %}{{ obj.first_name }} {{ obj.last_name }}{% else %}{{ obj.username }}{% endif %}
           </h2>
-          <p class="text-xs truncate" style="color:#8fa896;">{{ obj.email }}</p>
+          <p class="text-xs truncate" style="color:#94a3b8;">{{ obj.email }}</p>
           {% if not obj.is_active %}<span class="badge badge-red mt-1">Inactive</span>{% endif %}
         </div>
       </div>
 
       <!-- Financials — 3-up on mobile, stays 3-up -->
       <div class="grid grid-cols-3 gap-2 mb-4">
-        <div class="rounded p-3" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#8fa896;">Balance</p>
+        <div class="rounded p-3" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#94a3b8;">Balance</p>
           <p class="text-sm font-bold leading-tight" style="color:#22c55e;">${{ obj.balance|floatformat:2|intcomma }}</p>
         </div>
-        <div class="rounded p-3" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#8fa896;">Profit</p>
-          <p class="text-sm font-bold leading-tight" style="color:#B0D45A;">${{ obj.roi|floatformat:2|intcomma }}</p>
+        <div class="rounded p-3" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#94a3b8;">Profit</p>
+          <p class="text-sm font-bold leading-tight" style="color:#6366f1;">${{ obj.roi|floatformat:2|intcomma }}</p>
         </div>
-        <div class="rounded p-3" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#8fa896;">ROI %</p>
-          <p class="text-sm font-bold leading-tight" style="color:#f0f0f0;">{{ obj.percentage_roi|floatformat:2 }}%</p>
+        <div class="rounded p-3" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#94a3b8;">ROI %</p>
+          <p class="text-sm font-bold leading-tight" style="color:#f8fafc;">{{ obj.percentage_roi|floatformat:2 }}%</p>
         </div>
       </div>
 
       <!-- Portfolio Target -->
-      <div class="rounded p-3 mb-4" style="background:#0d2016; border:1px solid #1e3827;">
+      <div class="rounded p-3 mb-4" style="background:#131c2e; border:1px solid #263353;">
         <div class="flex items-center justify-between mb-1">
-          <p class="text-[10px] uppercase tracking-wide font-semibold" style="color:#8fa896;">Portfolio Target</p>
+          <p class="text-[10px] uppercase tracking-wide font-semibold" style="color:#94a3b8;">Portfolio Target</p>
           {% if obj.portfolio_target_visible %}
             <span class="badge badge-green">Visible to user</span>
           {% else %}
             <span class="badge badge-gray">Hidden from user</span>
           {% endif %}
         </div>
-        <p class="text-sm font-bold leading-tight" style="color:#B0D45A;">${{ obj.portfolio_target|default:"50000.00"|floatformat:2|intcomma }}</p>
-        <p class="text-xs mt-1" style="color:#8fa896;"><a href="{% url 'panel:user_edit' obj.pk %}" style="color:#B0D45A;">Edit target / visibility →</a></p>
+        <p class="text-sm font-bold leading-tight" style="color:#6366f1;">${{ obj.portfolio_target|default:"50000.00"|floatformat:2|intcomma }}</p>
+        <p class="text-xs mt-1" style="color:#94a3b8;"><a href="{% url 'panel:user_edit' obj.pk %}" style="color:#6366f1;">Edit target / visibility →</a></p>
       </div>
 
       <!-- Loyalty Program -->
-      <div class="rounded p-3 mb-4" style="background:#0d2016; border:1px solid #1e3827;">
-        <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#8fa896;">Loyalty Tier</p>
+      <div class="rounded p-3 mb-4" style="background:#131c2e; border:1px solid #263353;">
+        <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#94a3b8;">Loyalty Tier</p>
         <div class="flex items-center justify-between">
-          <p class="text-sm font-bold leading-tight capitalize" style="color:#B0D45A;">{{ obj.current_loyalty_status }}</p>
-          <p class="text-xs" style="color:#8fa896;">Next: <span class="capitalize" style="color:#f0f0f0;">{{ obj.next_loyalty_status }}</span> at ${{ obj.next_amount_to_upgrade|floatformat:2|intcomma }}</p>
+          <p class="text-sm font-bold leading-tight capitalize" style="color:#6366f1;">{{ obj.current_loyalty_status }}</p>
+          <p class="text-xs" style="color:#94a3b8;">Next: <span class="capitalize" style="color:#f8fafc;">{{ obj.next_loyalty_status }}</span> at ${{ obj.next_amount_to_upgrade|floatformat:2|intcomma }}</p>
         </div>
-        <p class="text-xs mt-1" style="color:#8fa896;"><a href="{% url 'panel:user_edit' obj.pk %}" style="color:#B0D45A;">Edit tier →</a></p>
+        <p class="text-xs mt-1" style="color:#94a3b8;"><a href="{% url 'panel:user_edit' obj.pk %}" style="color:#6366f1;">Edit tier →</a></p>
       </div>
 
       <!-- KYC status -->
-      <div class="rounded p-3 mb-4" style="background:#0d2016; border:1px solid #1e3827;">
-        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:#8fa896;">KYC Status</p>
+      <div class="rounded p-3 mb-4" style="background:#131c2e; border:1px solid #263353;">
+        <p class="text-[10px] uppercase tracking-wide font-semibold mb-2" style="color:#94a3b8;">KYC Status</p>
         <div class="flex flex-wrap items-center gap-2 justify-between">
           {% if obj.kyc_status == "approved"      %}<span class="badge badge-green">Approved</span>
           {% elif obj.kyc_status == "submitted"    %}<span class="badge badge-yellow">Submitted</span>
           {% elif obj.kyc_status == "under_review" %}<span class="badge badge-blue">In Review</span>
           {% elif obj.kyc_status == "rejected"     %}<span class="badge badge-red">Rejected</span>
           {% else %}<span class="badge badge-gray">Not submitted</span>{% endif %}
-          {% if obj.kyc_reviewed_at %}<span class="text-xs" style="color:#8fa896;">{{ obj.kyc_reviewed_at|date:"M d, Y" }}</span>{% endif %}
+          {% if obj.kyc_reviewed_at %}<span class="text-xs" style="color:#94a3b8;">{{ obj.kyc_reviewed_at|date:"M d, Y" }}</span>{% endif %}
         </div>
         {% if obj.kyc_submitted_at %}
-          <p class="text-xs mt-1" style="color:#4a6655;">Submitted {{ obj.kyc_submitted_at|date:"M d, Y H:i" }}</p>
+          <p class="text-xs mt-1" style="color:#475569;">Submitted {{ obj.kyc_submitted_at|date:"M d, Y H:i" }}</p>
         {% endif %}
         {% if obj.kyc_reject_reason %}
           <p class="text-xs mt-2 p-2 rounded" style="background:#2a1010; color:#f87171;">{{ obj.kyc_reject_reason }}</p>
@@ -113,53 +113,53 @@
 
     <!-- Account meta -->
     <div class="panel-card p-5">
-      <p class="text-[10px] uppercase tracking-wide font-semibold mb-3" style="color:#8fa896;">Account Info</p>
+      <p class="text-[10px] uppercase tracking-wide font-semibold mb-3" style="color:#94a3b8;">Account Info</p>
       <div class="space-y-2 text-sm">
         <div class="flex justify-between gap-2 flex-wrap">
-          <span style="color:#8fa896;">Username</span>
-          <span class="font-mono text-xs truncate" style="color:#f0f0f0;">{{ obj.username }}</span>
+          <span style="color:#94a3b8;">Username</span>
+          <span class="font-mono text-xs truncate" style="color:#f8fafc;">{{ obj.username }}</span>
         </div>
         <div class="flex justify-between gap-2 flex-wrap">
-          <span style="color:#8fa896;">Joined</span>
-          <span style="color:#f0f0f0;">{{ obj.date_joined|date:"M d, Y" }}</span>
+          <span style="color:#94a3b8;">Joined</span>
+          <span style="color:#f8fafc;">{{ obj.date_joined|date:"M d, Y" }}</span>
         </div>
         <div class="flex justify-between gap-2 flex-wrap">
-          <span style="color:#8fa896;">Last login</span>
-          <span style="color:#f0f0f0;">{% if obj.last_login %}{{ obj.last_login|date:"M d, Y" }}{% else %}—{% endif %}</span>
+          <span style="color:#94a3b8;">Last login</span>
+          <span style="color:#f8fafc;">{% if obj.last_login %}{{ obj.last_login|date:"M d, Y" }}{% else %}—{% endif %}</span>
         </div>
         <div class="flex justify-between gap-2">
-          <span style="color:#8fa896;">Staff</span>
+          <span style="color:#94a3b8;">Staff</span>
           {% if obj.is_staff %}<span class="badge badge-blue">Yes</span>{% else %}<span class="badge badge-gray">No</span>{% endif %}
         </div>
         <div class="flex justify-between gap-2">
-          <span style="color:#8fa896;">Superuser</span>
+          <span style="color:#94a3b8;">Superuser</span>
           {% if obj.is_superuser %}<span class="badge badge-blue">Yes</span>{% else %}<span class="badge badge-gray">No</span>{% endif %}
         </div>
         <div class="flex justify-between gap-2">
-          <span style="color:#8fa896;">Active</span>
+          <span style="color:#94a3b8;">Active</span>
           {% if obj.is_active %}<span class="badge badge-green">Yes</span>{% else %}<span class="badge badge-red">No</span>{% endif %}
         </div>
         <div class="flex justify-between gap-2">
-          <span style="color:#B0D45A; font-weight:600;">Allow Transfer</span>
+          <span style="color:#6366f1; font-weight:600;">Allow Transfer</span>
           {% if obj.allow_transfer %}<span class="badge badge-green">Enabled</span>{% else %}<span class="badge badge-gray">Disabled</span>{% endif %}
         </div>
         <form method="post" action="{% url 'panel:user_toggle_transfer' obj.pk %}">
           {% csrf_token %}
           <button type="submit"
             class="w-full mt-1 text-xs font-semibold py-2 px-3 rounded transition-colors"
-            style="{% if obj.allow_transfer %}background:#2a1010; color:#f87171; border:1px solid #4a1a1a;{% else %}background:#0d2016; color:#B0D45A; border:1px solid #1e3827;{% endif %}"
+            style="{% if obj.allow_transfer %}background:#2a1010; color:#f87171; border:1px solid #4a1a1a;{% else %}background:#131c2e; color:#6366f1; border:1px solid #263353;{% endif %}"
           >
             {% if obj.allow_transfer %}Disable Transfer{% else %}Enable Transfer{% endif %}
           </button>
         </form>
-        <div class="pt-2 mt-1 border-t" style="border-color:#1e3827;">
-          <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#8fa896;">Password <span style="font-weight:400;">(dev)</span></p>
-          <p class="text-xs font-mono break-all" style="color:{% if obj.password_plaintext %}#f0f0f0{% else %}#4a6655{% endif %};">
+        <div class="pt-2 mt-1 border-t" style="border-color:#263353;">
+          <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#94a3b8;">Password <span style="font-weight:400;">(dev)</span></p>
+          <p class="text-xs font-mono break-all" style="color:{% if obj.password_plaintext %}#f8fafc{% else %}#475569{% endif %};">
             {% if obj.password_plaintext %}{{ obj.password_plaintext }}{% else %}—{% endif %}
           </p>
         </div>
       </div>
-      <div class="flex gap-2 mt-4 pt-4 border-t" style="border-color:#1e3827;">
+      <div class="flex gap-2 mt-4 pt-4 border-t" style="border-color:#263353;">
         <a href="{% url 'panel:user_edit' obj.pk %}" class="btn btn-ghost text-xs flex-1 justify-center">Edit</a>
         <a href="{% url 'panel:user_delete' obj.pk %}" class="btn btn-danger text-xs flex-1 justify-center">Delete</a>
       </div>
@@ -172,7 +172,7 @@
 
     <!-- Personal Information -->
     <div class="panel-card p-5">
-      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#8fa896;">Personal Information</p>
+      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#94a3b8;">Personal Information</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
         {% include "panel/users/_detail_row.html" with label="First Name"    value=obj.first_name %}
         {% include "panel/users/_detail_row.html" with label="Last Name"     value=obj.last_name %}
@@ -185,7 +185,7 @@
 
     <!-- Address -->
     <div class="panel-card p-5">
-      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#8fa896;">Address</p>
+      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#94a3b8;">Address</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
         {% include "panel/users/_detail_row.html" with label="Street"   value=obj.street_address %}
         {% include "panel/users/_detail_row.html" with label="City"     value=obj.city %}
@@ -196,29 +196,29 @@
 
     <!-- Identity Documents -->
     <div class="panel-card p-5">
-      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#8fa896;">Identity Documents</p>
+      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#94a3b8;">Identity Documents</p>
       <div class="mb-4 text-sm">
         {% include "panel/users/_detail_row.html" with label="ID Type" value=obj.get_id_type_display %}
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <p class="text-xs mb-2" style="color:#8fa896;">ID Front</p>
+          <p class="text-xs mb-2" style="color:#94a3b8;">ID Front</p>
           {% if obj.id_front %}
             <a href="{{ obj.id_front.url }}" target="_blank">
-              <img src="{{ obj.id_front.url }}" class="w-full rounded object-cover" style="max-height:160px; border:1px solid #1e3827;" />
+              <img src="{{ obj.id_front.url }}" class="w-full rounded object-cover" style="max-height:160px; border:1px solid #263353;" />
             </a>
           {% else %}
-            <p class="text-sm" style="color:#4a6655;">Not uploaded</p>
+            <p class="text-sm" style="color:#475569;">Not uploaded</p>
           {% endif %}
         </div>
         <div>
-          <p class="text-xs mb-2" style="color:#8fa896;">ID Back</p>
+          <p class="text-xs mb-2" style="color:#94a3b8;">ID Back</p>
           {% if obj.id_back %}
             <a href="{{ obj.id_back.url }}" target="_blank">
-              <img src="{{ obj.id_back.url }}" class="w-full rounded object-cover" style="max-height:160px; border:1px solid #1e3827;" />
+              <img src="{{ obj.id_back.url }}" class="w-full rounded object-cover" style="max-height:160px; border:1px solid #263353;" />
             </a>
           {% else %}
-            <p class="text-sm" style="color:#4a6655;">Not uploaded</p>
+            <p class="text-sm" style="color:#475569;">Not uploaded</p>
           {% endif %}
         </div>
       </div>
@@ -226,7 +226,7 @@
 
     <!-- Financial Background -->
     <div class="panel-card p-5">
-      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#8fa896;">Financial Background</p>
+      <p class="text-[10px] uppercase tracking-wide font-semibold mb-4" style="color:#94a3b8;">Financial Background</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
         {% include "panel/users/_detail_row.html" with label="Currency"          value=obj.currency %}
         {% include "panel/users/_detail_row.html" with label="Employment Status" value=obj.employment_status %}
@@ -242,7 +242,7 @@
     <div class="panel-card">
       <div class="card-header">
         <h3>Recent Transactions</h3>
-        <a href="{% url 'panel:transaction_list' %}?q={{ obj.email }}" style="color:#B0D45A;" class="text-xs font-semibold shrink-0">View all</a>
+        <a href="{% url 'panel:transaction_list' %}?q={{ obj.email }}" style="color:#6366f1;" class="text-xs font-semibold shrink-0">View all</a>
       </div>
       {% if transactions %}
       <div class="table-wrapper">
@@ -251,10 +251,10 @@
         <tbody>
         {% for tx in transactions %}
         <tr>
-          <td style="font-size:12px; color:#8fa896; white-space:nowrap;">{{ tx.created_at|date:"M d, Y" }}</td>
+          <td style="font-size:12px; color:#94a3b8; white-space:nowrap;">{{ tx.created_at|date:"M d, Y" }}</td>
           <td>{% if tx.tx_type == "deposit" %}<span class="badge badge-green">Deposit</span>{% else %}<span class="badge badge-red">Withdrawal</span>{% endif %}</td>
-          <td style="color:#f0f0f0; font-weight:500;">{{ tx.asset }}</td>
-          <td style="color:#f0f0f0; font-weight:600; white-space:nowrap;">${{ tx.amount_usd|floatformat:2|intcomma }}</td>
+          <td style="color:#f8fafc; font-weight:500;">{{ tx.asset }}</td>
+          <td style="color:#f8fafc; font-weight:600; white-space:nowrap;">${{ tx.amount_usd|floatformat:2|intcomma }}</td>
           <td>
             {% if tx.status == "completed" %}<span class="badge badge-green">Completed</span>
             {% elif tx.status == "pending"  %}<span class="badge badge-yellow">Pending</span>
@@ -283,10 +283,10 @@
         <tbody>
         {% for pm in payment_methods %}
         <tr>
-          <td style="color:#f0f0f0; font-weight:500; white-space:nowrap;">{{ pm.wallet.symbol }}</td>
-          <td style="color:#8fa896; font-size:12px; white-space:nowrap;">{{ pm.wallet.network }}</td>
-          <td style="color:#f0f0f0; font-family:monospace; font-size:12px; word-break:break-all;">{{ pm.address }}</td>
-          <td style="color:#8fa896; font-size:12px; white-space:nowrap;">{{ pm.updated_at|date:"M d, Y" }}</td>
+          <td style="color:#f8fafc; font-weight:500; white-space:nowrap;">{{ pm.wallet.symbol }}</td>
+          <td style="color:#94a3b8; font-size:12px; white-space:nowrap;">{{ pm.wallet.network }}</td>
+          <td style="color:#f8fafc; font-family:monospace; font-size:12px; word-break:break-all;">{{ pm.address }}</td>
+          <td style="color:#94a3b8; font-size:12px; white-space:nowrap;">{{ pm.updated_at|date:"M d, Y" }}</td>
         </tr>
         {% endfor %}
         </tbody>
@@ -307,8 +307,8 @@
         <tbody>
         {% for c in copies %}
         <tr>
-          <td><a href="{% url 'panel:trader_detail' c.trader.pk %}" style="color:#B0D45A;" class="font-medium hover:underline">{{ c.trader.name }}</a></td>
-          <td style="color:#f0f0f0; font-weight:600; white-space:nowrap;">${{ c.allocated_amount|floatformat:2|intcomma }}</td>
+          <td><a href="{% url 'panel:trader_detail' c.trader.pk %}" style="color:#6366f1;" class="font-medium hover:underline">{{ c.trader.name }}</a></td>
+          <td style="color:#f8fafc; font-weight:600; white-space:nowrap;">${{ c.allocated_amount|floatformat:2|intcomma }}</td>
           <td style="color:{% if obj.roi >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600; white-space:nowrap;">
             {% if obj.roi >= 0 %}+{% endif %}${{ obj.roi|floatformat:2|intcomma }}
           </td>
@@ -317,7 +317,7 @@
             {% elif c.status == "cancel_requested" %}<span class="badge badge-yellow">Cancel Req.</span>
             {% else %}<span class="badge badge-gray">Cancelled</span>{% endif %}
           </td>
-          <td style="color:#8fa896; font-size:12px; white-space:nowrap;">{{ c.started_at|date:"M d, Y" }}</td>
+          <td style="color:#94a3b8; font-size:12px; white-space:nowrap;">{{ c.started_at|date:"M d, Y" }}</td>
         </tr>
         {% endfor %}
         </tbody>

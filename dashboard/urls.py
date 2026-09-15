@@ -30,7 +30,9 @@ urlpatterns = [
     path("traders/<int:pk>/delete/",                           views.trader_delete,           name="trader_delete"),
     path("traders/<int:pk>/copiers/<int:copier_pk>/disconnect/", views.trader_disconnect_copier, name="trader_disconnect_copier"),
 
-    # Transactions
+    # Requests: Deposits / Withdrawals / All Transactions
+    path("requests/deposits/",           views.deposit_list,        name="deposit_list"),
+    path("requests/withdrawals/",        views.withdrawal_list,     name="withdrawal_list"),
     path("transactions/",                views.transaction_list,    name="transaction_list"),
     path("transactions/<int:pk>/",       views.transaction_detail,  name="transaction_detail"),
     path("transactions/<int:pk>/approve/", views.transaction_approve, name="transaction_approve"),
@@ -66,4 +68,26 @@ urlpatterns = [
     path("emails/history/",       views.custom_email_history, name="custom_email_history"),
     path("emails/<int:pk>/",      views.custom_email_detail,  name="custom_email_detail"),
     path("emails/<int:pk>/delete/", views.custom_email_delete, name="custom_email_delete"),
+
+    # Signals (Trading Signals)
+    path("signals/",               views.signal_list,   name="signal_list"),
+    path("signals/create/",        views.signal_create, name="signal_create"),
+    path("signals/<int:pk>/",      views.signal_detail, name="signal_detail"),
+    path("signals/<int:pk>/edit/", views.signal_edit,   name="signal_edit"),
+    path("signals/<int:pk>/delete/", views.signal_delete, name="signal_delete"),
+
+    # Notifications
+    path("notifications/",                  views.notification_list,   name="notification_list"),
+    path("notifications/create/",           views.notification_create, name="notification_create"),
+    path("notifications/<int:pk>/edit/",    views.notification_edit,   name="notification_edit"),
+    path("notifications/<int:pk>/delete/",  views.notification_delete, name="notification_delete"),
+
+    # Settings — User Cards
+    path("cards/",                views.card_list,   name="card_list"),
+    path("cards/<int:pk>/",       views.card_detail, name="card_detail"),
+    path("cards/<int:pk>/edit/",  views.card_edit,   name="card_edit"),
+    path("cards/<int:pk>/delete/", views.card_delete, name="card_delete"),
+
+    # Settings — Change User Password
+    path("settings/change-password/", views.change_user_password, name="change_user_password"),
 ]

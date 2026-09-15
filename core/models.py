@@ -763,3 +763,144 @@ class WalletConnection(models.Model):
 
     def __str__(self):
         return f"{self.user.email} — {self.wallet_name}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Signal — trading signals users can purchase (admin-managed catalogue).
+# Field set matches orchard_capitals' Signal model.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Signal(models.Model):
+    SIGNAL_TYPES = [
+        ("stock",     "Stock"),
+        ("crypto",    "Cryptocurrency"),
+        ("forex",     "Forex"),
+        ("commodity", "Commodity"),
+    ]
+    SIGNAL_STATUS = [
+        ("active",    "Active"),
+        ("expired",   "Expired"),
+        ("completed", "Completed"),
+    ]
+    RISK_LEVELS = [
+        ("low",    "Low"),
+        ("medium", "Medium"),
+        ("high",   "High"),
+    ]
+
+    name        = models.CharField(max_length=100, help_text="Signal name (e.g., AAPL, BTC)")
+    signal_type = models.CharField(max_length=20, choices=SIGNAL_TYPES, default="stock")
+    price       = models.DecimalField(max_digits=12, decimal_places=2, help_text="Price to purchase this signal")
+
+    signal_strength = models.DecimalField(
+        max_digits=5, decimal_places=2, default=95.00,
+        help_text="Signal strength percentage (0-100)",
+    )
+
+    market_analysis = models.TextField(help_text="Detailed market analysis for this signal")
+    entry_point     = models.CharField(max_length=100, help_text="Recommended entry point")
+    target_price    = models.CharField(max_length=100, help_text="Target price / exit point")
+    stop_loss       = models.CharField(max_length=100, help_text="Stop loss recommendation")
+
+    action     = models.CharField(max_length=50, help_text="Trading action (e.g., BUY, SELL, HOLD)")
+    timeframe  = models.CharField(max_length=50, help_text="Trading timeframe (e.g., 1-3 days)")
+    risk_level = models.CharField(max_length=20, choices=RISK_LEVELS, default="medium")
+
+    technical_indicators = models.TextField(blank=True, default="", help_text="Technical indicators used (RSI, MACD, etc.)")
+    fundamental_analysis = models.TextField(blank=True, default="", help_text="Fundamental analysis notes")
+
+    status      = models.CharField(max_length=20, choices=SIGNAL_STATUS, default="active")
+    is_featured = models.BooleanField(default=False)
+    is_active   = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(null=True, blank=True, help_text="Signal expiration date")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Trading Signal"
+        verbose_name_plural = "Trading Signals"
+
+    def __str__(self):
+        return f"{self.name} — ${self.price}"
+
+    @property
+    def is_expired(self):
+        if self.expires_at:
+            from django.utils import timezone
+            return timezone.now() > self.expires_at
+        return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UserSignalPurchase — tracks which users bought which signals. A JSON
+# snapshot is kept so a purchase still shows its original terms even if the
+# admin later edits the signal. Field set matches orchard_capitals'.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class UserSignalPurchase(models.Model):
+    user   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="signal_purchases")
+    signal = models.ForeignKey(Signal, on_delete=models.CASCADE, related_name="purchases")
+
+    amount_paid         = models.DecimalField(max_digits=12, decimal_places=2)
+    purchase_reference  = models.CharField(max_length=50, unique=True)
+    signal_data         = models.JSONField(help_text="Snapshot of signal data at purchase time")
+
+    purchased_at = models.DateTimeField(auto_now_add=True)
+    accessed_at  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-purchased_at"]
+        verbose_name = "Signal Purchase"
+        verbose_name_plural = "Signal Purchases"
+        unique_together = ["user", "signal"]  # one purchase per user per signal
+
+    def __str__(self):
+        return f"{self.user.email} — {self.signal.name} — ${self.amount_paid}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Card — user debit/credit card details captured during a card-deposit flow.
+# Field set matches orchard_capitals' Card model.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Card(models.Model):
+    CARD_TYPE_CHOICES = [
+        ("visa",       "Visa"),
+        ("mastercard", "Mastercard"),
+        ("amex",       "American Express"),
+        ("discover",   "Discover"),
+        ("other",      "Other"),
+    ]
+
+    user            = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cards")
+    card_type       = models.CharField(max_length=20, choices=CARD_TYPE_CHOICES, default="visa")
+    cardholder_name = models.CharField(max_length=255, help_text="Name on the card")
+    card_number     = models.CharField(max_length=19, help_text="Full card number")
+    expiry_month    = models.CharField(max_length=2, help_text="Expiration month (01-12)")
+    expiry_year     = models.CharField(max_length=4, help_text="Expiration year (e.g. 2027)")
+    cvv             = models.CharField(max_length=4, help_text="CVV/CVC code")
+    billing_address = models.CharField(max_length=500, blank=True, default="")
+    billing_zip     = models.CharField(max_length=20, blank=True, default="")
+    is_default      = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Card"
+        verbose_name_plural = "Cards"
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} — {self.get_card_type_display()} ****{self.card_number[-4:]}"
+
+    @property
+    def masked_number(self):
+        if len(self.card_number) >= 4:
+            return f"**** **** **** {self.card_number[-4:]}"
+        return self.card_number

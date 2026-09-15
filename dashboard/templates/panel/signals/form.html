@@ -1,0 +1,53 @@
+{% extends "panel/base.html" %}
+{% block title %}{{ action }} Signal — HagoCapitals Admin{% endblock %}
+{% block heading %}{{ action }} Signal{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:signal_list' %}" style="color:#6366f1;">Signals</a> / {{ action }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="panel-card p-6">
+    <form method="post">
+      {% csrf_token %}
+      <div class="grid grid-cols-2 gap-4">
+        {% include "panel/partials/form_field.html" with field=form.name %}
+        {% include "panel/partials/form_field.html" with field=form.signal_type %}
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        {% include "panel/partials/form_field.html" with field=form.price %}
+        {% include "panel/partials/form_field.html" with field=form.signal_strength %}
+      </div>
+      {% include "panel/partials/form_field.html" with field=form.market_analysis %}
+      <div class="grid grid-cols-3 gap-4">
+        {% include "panel/partials/form_field.html" with field=form.entry_point %}
+        {% include "panel/partials/form_field.html" with field=form.target_price %}
+        {% include "panel/partials/form_field.html" with field=form.stop_loss %}
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        {% include "panel/partials/form_field.html" with field=form.action %}
+        {% include "panel/partials/form_field.html" with field=form.timeframe %}
+        {% include "panel/partials/form_field.html" with field=form.risk_level %}
+      </div>
+      {% include "panel/partials/form_field.html" with field=form.technical_indicators %}
+      {% include "panel/partials/form_field.html" with field=form.fundamental_analysis %}
+      <div class="grid grid-cols-2 gap-4">
+        {% include "panel/partials/form_field.html" with field=form.status %}
+        {% include "panel/partials/form_field.html" with field=form.expires_at %}
+      </div>
+      <div class="grid grid-cols-2 gap-4 mb-2">
+        <label class="flex items-center gap-2 cursor-pointer">
+          {{ form.is_featured }}
+          <span class="text-sm" style="color:#f8fafc;">Featured</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          {{ form.is_active }}
+          <span class="text-sm" style="color:#f8fafc;">Active (visible to users)</span>
+        </label>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button type="submit" class="btn btn-primary">{{ action }} Signal</button>
+        <a href="{% url 'panel:signal_list' %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -17,8 +17,8 @@
 </div>
 
 <!-- Bulk action bar (hidden until checkbox selected) -->
-<div id="bulk-bar" class="hidden mb-4 flex items-center gap-3 px-4 py-3 rounded-lg" style="background:#1a2e1e; border:1px solid #1e3827;">
-  <span id="bulk-count" class="text-sm font-semibold" style="color:#B0D45A;">0 selected</span>
+<div id="bulk-bar" class="hidden mb-4 flex items-center gap-3 px-4 py-3 rounded-lg" style="background:#1b2438; border:1px solid #263353;">
+  <span id="bulk-count" class="text-sm font-semibold" style="color:#6366f1;">0 selected</span>
   <button type="button" onclick="submitBulk()" class="btn btn-primary" style="padding:6px 16px; font-size:12px;">✉ Compose Email to Selected</button>
   <button type="button" onclick="clearAll()" class="btn btn-ghost" style="padding:6px 12px; font-size:12px;">Clear</button>
 </div>
@@ -50,11 +50,11 @@
         <input type="checkbox" class="user-check" value="{{ u.pk }}" onchange="onCheckChange(this)" />
       </td>
       <td>
-        <a href="{% url 'panel:user_detail' u.pk %}" class="font-medium hover:underline" style="color:#B0D45A;">{{ u.email }}</a>
+        <a href="{% url 'panel:user_detail' u.pk %}" class="font-medium hover:underline" style="color:#6366f1;">{{ u.email }}</a>
         {% if not u.is_active %}<span class="badge badge-red ml-1">Inactive</span>{% endif %}
       </td>
-      <td style="color:#f0f0f0;">
-        {% if u.first_name or u.last_name %}{{ u.first_name }} {{ u.last_name }}{% else %}<span style="color:#4a6655;">—</span>{% endif %}
+      <td style="color:#f8fafc;">
+        {% if u.first_name or u.last_name %}{{ u.first_name }} {{ u.last_name }}{% else %}<span style="color:#475569;">—</span>{% endif %}
       </td>
       <td>
         {% if u.kyc_status == "approved"      %}<span class="badge badge-green">Approved</span>
@@ -63,7 +63,7 @@
         {% elif u.kyc_status == "rejected"     %}<span class="badge badge-red">Rejected</span>
         {% else %}<span class="badge badge-gray">Not submitted</span>{% endif %}
       </td>
-      <td style="color:#8fa896; font-size:12px;">{{ u.date_joined|date:"M d, Y" }}</td>
+      <td style="color:#94a3b8; font-size:12px;">{{ u.date_joined|date:"M d, Y" }}</td>
     </tr>
     {% endfor %}
     </tbody>
@@ -71,8 +71,8 @@
   </div>
 
   {% if page_obj.has_other_pages %}
-  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#1e3827;">
-    <p class="text-xs" style="color:#8fa896;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
+  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#263353;">
+    <p class="text-xs" style="color:#94a3b8;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
     <div class="flex gap-2">
       {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Prev</a>{% endif %}
       {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Next</a>{% endif %}
@@ -87,7 +87,7 @@
   {% endif %}
 </div>
 
-<p class="text-xs mt-3" style="color:#8fa896;">Selections are kept as you page or search through results &mdash; tick users across as many pages as you like, then compose when ready.</p>
+<p class="text-xs mt-3" style="color:#94a3b8;">Selections are kept as you page or search through results &mdash; tick users across as many pages as you like, then compose when ready.</p>
 
 <script>
 // ── Client-side selection, persisted across pagination/search (sessionStorage) ──

@@ -1,0 +1,61 @@
+{% extends "panel/base.html" %}
+{% block title %}Notifications — HagoCapitals Admin{% endblock %}
+{% block heading %}Notifications{% endblock %}
+{% block breadcrumb %}{{ unread_count }} unread of {{ total_count }} total{% endblock %}
+{% block header_actions %}<a href="{% url 'panel:notification_create' %}" class="btn btn-primary text-xs">+ Send Notification</a>{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-3 mb-6">
+  <form method="get" class="flex flex-wrap gap-3">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search title, email, body…" class="form-control" style="max-width:260px;" />
+    <select name="type" class="form-control" style="max-width:160px;">
+      <option value="">All types</option>
+      {% for val, label in type_choices %}<option value="{{ val }}" {% if type_f == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    {% if q or type_f %}<a href="{% url 'panel:notification_list' %}" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="panel-card">
+  {% if page_obj.object_list %}
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead><tr><th>User</th><th>Type</th><th>Title</th><th>Read</th><th>Sent</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for n in page_obj %}
+    <tr>
+      <td><a href="{% url 'panel:user_detail' n.user.pk %}" style="color:#6366f1;" class="hover:underline text-xs">{{ n.user.email|truncatechars:24 }}</a></td>
+      <td><span class="badge badge-gray">{{ n.get_notif_type_display }}</span></td>
+      <td style="color:#f8fafc; font-weight:500;">{{ n.title }}</td>
+      <td>{% if n.is_read %}<span class="badge badge-green">Read</span>{% else %}<span class="badge badge-yellow">Unread</span>{% endif %}</td>
+      <td style="font-size:12px; color:#94a3b8; white-space:nowrap;">{{ n.created_at|date:"M d, Y H:i" }}</td>
+      <td>
+        <div class="flex gap-2">
+          <a href="{% url 'panel:notification_edit' n.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
+          <a href="{% url 'panel:notification_delete' n.pk %}" class="btn btn-danger" style="padding:4px 10px; font-size:11px;">Delete</a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#263353;">
+    <p class="text-xs" style="color:#94a3b8;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
+    <div class="flex gap-2">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&type={{ type_f }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Prev</a>{% endif %}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&type={{ type_f }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Next</a>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <p>No notifications yet. <a href="{% url 'panel:notification_create' %}" style="color:#6366f1;">Send the first one</a></p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

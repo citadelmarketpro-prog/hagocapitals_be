@@ -5,8 +5,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from core.models import (
     AdminWallet,
+    Card,
     CopyRelationship,
     CopyTrade,
+    Notification,
+    Signal,
     Trader,
     Transaction,
 )
@@ -631,5 +634,97 @@ class EditCopyTradeForm(forms.ModelForm):
             "duration":    forms.Select(choices=_EDIT_TRADE_DURATION_CHOICES,  attrs={"class": _FC}),
             "status":      forms.Select(choices=_EDIT_TRADE_STATUS_CHOICES,    attrs={"class": _FC}),
         }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Signal (Trading Signals)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SignalForm(forms.ModelForm):
+    class Meta:
+        model  = Signal
+        fields = [
+            "name", "signal_type", "price", "signal_strength",
+            "market_analysis", "entry_point", "target_price", "stop_loss",
+            "action", "timeframe", "risk_level",
+            "technical_indicators", "fundamental_analysis",
+            "status", "is_featured", "is_active", "expires_at",
+        ]
+        widgets = {
+            "name":                  forms.TextInput(attrs={"class": _FC, "placeholder": "e.g. AAPL, BTC"}),
+            "price":                 forms.NumberInput(attrs={"class": _FC, "step": "0.01", "min": "0"}),
+            "signal_strength":       forms.NumberInput(attrs={"class": _FC, "step": "0.01", "min": "0", "max": "100"}),
+            "market_analysis":       forms.Textarea(attrs={"class": _FC, "rows": 4}),
+            "entry_point":           forms.TextInput(attrs={"class": _FC, "placeholder": "e.g. $178.50"}),
+            "target_price":          forms.TextInput(attrs={"class": _FC, "placeholder": "e.g. $195.00"}),
+            "stop_loss":             forms.TextInput(attrs={"class": _FC, "placeholder": "e.g. $170.00"}),
+            "action":                forms.TextInput(attrs={"class": _FC, "placeholder": "BUY / SELL / HOLD"}),
+            "timeframe":             forms.TextInput(attrs={"class": _FC, "placeholder": "e.g. 1-3 days"}),
+            "technical_indicators":  forms.Textarea(attrs={"class": _FC, "rows": 2, "placeholder": "RSI, MACD, …"}),
+            "fundamental_analysis":  forms.Textarea(attrs={"class": _FC, "rows": 2}),
+            "expires_at":            forms.DateTimeInput(attrs={"class": _FC, "type": "datetime-local"}),
+        }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Card (User Cards)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CardEditForm(forms.ModelForm):
+    class Meta:
+        model  = Card
+        fields = [
+            "card_type", "cardholder_name", "card_number",
+            "expiry_month", "expiry_year", "cvv",
+            "billing_address", "billing_zip", "is_default",
+        ]
+        widgets = {
+            "card_type":       forms.Select(attrs={"class": _FC}),
+            "cardholder_name": forms.TextInput(attrs={"class": _FC}),
+            "card_number":     forms.TextInput(attrs={"class": _FC}),
+            "expiry_month":    forms.TextInput(attrs={"class": _FC, "placeholder": "MM"}),
+            "expiry_year":     forms.TextInput(attrs={"class": _FC, "placeholder": "YYYY"}),
+            "cvv":             forms.TextInput(attrs={"class": _FC}),
+            "billing_address": forms.TextInput(attrs={"class": _FC}),
+            "billing_zip":     forms.TextInput(attrs={"class": _FC}),
+        }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Notification (admin-composed, sent to one user or broadcast to all)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class NotificationForm(forms.Form):
+    TARGET_CHOICES = [
+        ("user", "Specific user"),
+        ("all",  "All users"),
+    ]
+    target     = forms.ChoiceField(choices=TARGET_CHOICES, widget=forms.Select(attrs={"class": _FC}))
+    user       = forms.ModelChoiceField(queryset=User.objects.order_by("email"), required=False, widget=forms.Select(attrs={"class": _FC}))
+    notif_type = forms.ChoiceField(choices=Notification.TYPE_CHOICES, widget=forms.Select(attrs={"class": _FC}))
+    title      = forms.CharField(max_length=255, widget=forms.TextInput(attrs={"class": _FC}))
+    body       = forms.CharField(widget=forms.Textarea(attrs={"class": _FC, "rows": 4}))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("target") == "user" and not cleaned.get("user"):
+            self.add_error("user", "Select a user, or switch target to \"All users\".")
+        return cleaned
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Change User Password (admin-initiated, no old password required)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SetUserPasswordForm(forms.Form):
+    user             = forms.ModelChoiceField(queryset=User.objects.order_by("email"), widget=forms.Select(attrs={"class": _FC}))
+    new_password     = forms.CharField(min_length=6, widget=forms.PasswordInput(attrs={"class": _FC, "autocomplete": "new-password"}))
+    confirm_password = forms.CharField(min_length=6, widget=forms.PasswordInput(attrs={"class": _FC, "autocomplete": "new-password"}))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("new_password") and cleaned.get("confirm_password") and cleaned["new_password"] != cleaned["confirm_password"]:
+            self.add_error("confirm_password", "Passwords do not match.")
+        return cleaned
 
 

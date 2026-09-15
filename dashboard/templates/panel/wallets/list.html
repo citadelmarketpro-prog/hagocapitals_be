@@ -16,15 +16,15 @@
       <td>
         <div class="flex items-center gap-3">
           {% with icon_url=w.get_icon_url %}
-          {% if icon_url %}<img src="{{ icon_url }}" class="w-7 h-7 rounded-full" style="background:#1e3827;" />
-          {% else %}<div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:#1e3827; color:#B0D45A;">{{ w.symbol|first }}</div>{% endif %}
+          {% if icon_url %}<img src="{{ icon_url }}" class="w-7 h-7 rounded-full" style="background:#263353;" />
+          {% else %}<div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:#263353; color:#6366f1;">{{ w.symbol|first }}</div>{% endif %}
           {% endwith %}
-          <span class="font-medium" style="color:#f0f0f0;">{{ w.get_name_display }}</span>
+          <span class="font-medium" style="color:#f8fafc;">{{ w.get_name_display }}</span>
         </div>
       </td>
       <td><span class="badge badge-gray">{{ w.symbol }}</span></td>
-      <td style="color:#8fa896; font-size:13px;">{{ w.network }}</td>
-      <td><code class="text-xs font-mono" style="color:#8fa896;">{{ w.address|truncatechars:28 }}</code></td>
+      <td style="color:#94a3b8; font-size:13px;">{{ w.network }}</td>
+      <td><code class="text-xs font-mono" style="color:#94a3b8;">{{ w.address|truncatechars:28 }}</code></td>
       <td>{% if w.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red">Inactive</span>{% endif %}</td>
       <td>
         <div class="flex gap-2">
@@ -39,7 +39,7 @@
   </div>
   {% else %}
   <div class="empty-state">
-    <p>No wallets yet. <a href="{% url 'panel:wallet_create' %}" style="color:#B0D45A;">Add the first one</a></p>
+    <p>No wallets yet. <a href="{% url 'panel:wallet_create' %}" style="color:#6366f1;">Add the first one</a></p>
   </div>
   {% endif %}
 </div>

@@ -1,7 +1,7 @@
 {% extends "panel/base.html" %}
 {% block title %}{{ action }} Trader — HagoCapitals Admin{% endblock %}
 {% block heading %}{{ action }} Trader{% endblock %}
-{% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#B0D45A;">Traders</a> / {% if obj %}<a href="{% url 'panel:trader_detail' obj.pk %}" style="color:#B0D45A;">{{ obj.name }}</a> / {% endif %}{{ action }}{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#6366f1;">Traders</a> / {% if obj %}<a href="{% url 'panel:trader_detail' obj.pk %}" style="color:#6366f1;">{{ obj.name }}</a> / {% endif %}{{ action }}{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl">
@@ -14,8 +14,8 @@
 
       {% if not obj %}
       <!-- Preset Auto-fill -->
-      <div class="mb-6 p-4 rounded-lg" style="background:#0d2016; border:1px solid #B0D45A;">
-        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2" style="color:#B0D45A;">
+      <div class="mb-6 p-4 rounded-lg" style="background:#131c2e; border:1px solid #6366f1;">
+        <h3 class="text-sm font-semibold mb-3 flex items-center gap-2" style="color:#6366f1;">
           ✎ Auto-fill from Preset
         </h3>
         <div class="flex flex-col sm:flex-row gap-3">
@@ -26,11 +26,11 @@
             ⬇ Load Preset
           </button>
         </div>
-        <p class="text-xs mt-2" style="color:#8fa896;">All fields will be filled automatically — review and edit before submitting.</p>
+        <p class="text-xs mt-2" style="color:#94a3b8;">All fields will be filled automatically — review and edit before submitting.</p>
       </div>
       {% endif %}
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b" style="color:#8fa896; border-color:#1e3827;">Identity</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b" style="color:#94a3b8; border-color:#263353;">Identity</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="mb-4 col-span-2 md:col-span-1">
           <label class="form-label">Name *</label>
@@ -39,7 +39,7 @@
         <div class="mb-4 col-span-2 md:col-span-1">
           <label class="form-label">Username</label>
           <input type="text" id="id_username" name="username" value="{{ form.username.value|default:'' }}" class="form-control" placeholder="@kristijan" />
-          <p class="text-xs mt-1" style="color:#8fa896;">Must be unique. Optional.</p>
+          <p class="text-xs mt-1" style="color:#94a3b8;">Must be unique. Optional.</p>
         </div>
         <div class="mb-4 col-span-2">
           <label class="form-label">Bio</label>
@@ -71,12 +71,12 @@
           </select>
         </div>
         <div class="mb-4 flex items-center gap-2" style="padding-top:26px;">
-          <input type="checkbox" name="is_active" id="id_is_active" {% if form.is_active.value %}checked{% endif %} style="accent-color:#B0D45A; width:16px; height:16px;" />
+          <input type="checkbox" name="is_active" id="id_is_active" {% if form.is_active.value %}checked{% endif %} style="accent-color:#6366f1; width:16px; height:16px;" />
           <label class="form-label" for="id_is_active" style="margin:0;">Available for copying</label>
         </div>
       </div>
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Performance</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Performance</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div class="mb-4"><label class="form-label">Gain / ROI (%)</label><input type="number" id="id_gain" name="gain" value="{{ form.gain.value|default:'' }}" class="form-control" step="0.01" placeholder="126799.00" /></div>
         <div class="mb-4"><label class="form-label">Copiers</label><input type="number" id="id_copiers" name="copiers" value="{{ form.copiers.value|default:'' }}" class="form-control" placeholder="40" /></div>
@@ -96,21 +96,21 @@
         </div>
       </div>
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Detail Stats</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Detail Stats</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div class="mb-4"><label class="form-label">Max Drawdown (%)</label><input type="number" id="id_max_drawdown" name="max_drawdown" value="{{ form.max_drawdown.value|default:'0' }}" class="form-control" step="0.01" placeholder="15.50" /></div>
         <div class="mb-4"><label class="form-label">Cum. Earnings of Copiers ($)</label><input type="number" id="id_cumulative_earnings_copiers" name="cumulative_earnings_copiers" value="{{ form.cumulative_earnings_copiers.value|default:'0' }}" class="form-control" step="0.01" placeholder="250000.00" /></div>
         <div class="mb-4"><label class="form-label">Cum. Copiers</label><input type="number" id="id_cumulative_copiers" name="cumulative_copiers" value="{{ form.cumulative_copiers.value|default:'0' }}" class="form-control" placeholder="500" /></div>
       </div>
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">About Section</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">About Section</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div class="mb-4"><label class="form-label">Subscribers</label><input type="number" id="id_subscribers" name="subscribers" value="{{ form.subscribers.value|default:'0' }}" class="form-control" placeholder="49" /></div>
         <div class="mb-4"><label class="form-label">Current Open Positions</label><input type="number" id="id_current_positions" name="current_positions" value="{{ form.current_positions.value|default:'0' }}" class="form-control" placeholder="3" /></div>
         <div class="mb-4"><label class="form-label">Expert Rating (out of 5.00)</label><input type="number" id="id_expert_rating" name="expert_rating" value="{{ form.expert_rating.value|default:'5.00' }}" class="form-control" step="0.01" min="0" max="5" placeholder="4.80" /></div>
       </div>
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Performance Metrics</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Performance Metrics</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div class="mb-4"><label class="form-label">Return YTD (%)</label><input type="number" id="id_return_ytd" name="return_ytd" value="{{ form.return_ytd.value|default:'0' }}" class="form-control" step="0.01" placeholder="2187.00" /></div>
         <div class="mb-4"><label class="form-label">Return 2Y (%)</label><input type="number" id="id_return_2y" name="return_2y" value="{{ form.return_2y.value|default:'0' }}" class="form-control" step="0.01" placeholder="5000.00" /></div>
@@ -123,7 +123,7 @@
         <div class="mb-4"><label class="form-label">Total Losses</label><input type="number" id="id_total_losses" name="total_losses" value="{{ form.total_losses.value|default:'' }}" class="form-control" placeholder="160" /></div>
       </div>
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Categorisation</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-4 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Categorisation</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="mb-4">
           <label class="form-label">Category</label>
@@ -148,14 +148,14 @@
         </div>
       </div>
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-3 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Tags</h3>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-3 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Tags</h3>
       <div class="mb-6">
         <textarea id="id_tags" name="tags" class="form-control" rows="2" placeholder='["Trending Investors", "Rising Stars"]'>{{ form.tags.value|default:'[]' }}</textarea>
-        <p class="text-xs mt-1" style="color:#8fa896;">JSON array of tag strings, e.g. ["Trending Investors", "Rising Stars"].</p>
+        <p class="text-xs mt-1" style="color:#94a3b8;">JSON array of tag strings, e.g. ["Trending Investors", "Rising Stars"].</p>
       </div>
 
-      <h3 class="text-xs font-semibold uppercase tracking-widest mb-1 pb-2 border-b mt-4" style="color:#8fa896; border-color:#1e3827;">Additional Trading Data (JSON)</h3>
-      <p class="text-xs mb-3" style="color:#8fa896;">Optional — each field takes a JSON array. Leave blank to auto-fill with demo data when the trader is created.</p>
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-1 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Additional Trading Data (JSON)</h3>
+      <p class="text-xs mb-3" style="color:#94a3b8;">Optional — each field takes a JSON array. Leave blank to auto-fill with demo data when the trader is created.</p>
       <div class="grid grid-cols-1 gap-4 mb-2">
         <div class="mb-4">
           <label class="form-label">Portfolio Breakdown</label>

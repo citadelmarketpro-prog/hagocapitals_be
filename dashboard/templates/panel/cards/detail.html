@@ -1,0 +1,57 @@
+{% extends "panel/base.html" %}
+{% block title %}Card #{{ obj.pk }} — HagoCapitals Admin{% endblock %}
+{% block heading %}Card Detail{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:card_list' %}" style="color:#6366f1;">User Cards</a> / #{{ obj.pk }}{% endblock %}
+{% block header_actions %}<a href="{% url 'panel:card_edit' obj.pk %}" class="btn btn-ghost text-xs">Edit</a>{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="panel-card p-6 mb-5">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Owner</p>
+        <a href="{% url 'panel:user_detail' obj.user.pk %}" class="font-medium hover:underline" style="color:#6366f1;">{{ obj.user.email }}</a>
+      </div>
+      {% if obj.is_default %}<span class="badge badge-green">Default card</span>{% endif %}
+    </div>
+
+    <div class="grid grid-cols-2 gap-y-4 gap-x-6 py-4 border-y" style="border-color:#263353;">
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Card Type</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.get_card_type_display }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Cardholder</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.cardholder_name }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Card Number</p>
+        <p class="font-mono font-medium" style="color:#f8fafc;">{{ obj.card_number }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Expiry</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.expiry_month }}/{{ obj.expiry_year }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">CVV</p>
+        <p class="font-mono font-medium" style="color:#f8fafc;">{{ obj.cvv }}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Added</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.created_at|date:"M d, Y H:i" }}</p>
+      </div>
+      {% if obj.billing_address %}
+      <div class="col-span-2">
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Billing Address</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.billing_address }}{% if obj.billing_zip %}, {{ obj.billing_zip }}{% endif %}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <a href="{% url 'panel:card_list' %}" class="btn btn-ghost text-xs">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to list
+  </a>
+</div>
+{% endblock %}

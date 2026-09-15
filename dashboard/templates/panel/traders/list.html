@@ -29,27 +29,27 @@
         <div class="flex items-center gap-3">
           {% if t.avatar %}<img src="{{ t.avatar.url }}" class="w-9 h-9 rounded-full object-cover" />
           {% else %}
-          <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style="background:#2a4a38; color:#f0f0f0;">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style="background:#263353; color:#f8fafc;">
             {{ t.name|first }}
           </div>
           {% endif %}
           <div>
-            <a href="{% url 'panel:trader_detail' t.pk %}" class="font-semibold hover:underline" style="color:#B0D45A;">{{ t.name }}</a>
-            <p class="text-xs" style="color:#8fa896;">{{ t.username }}</p>
+            <a href="{% url 'panel:trader_detail' t.pk %}" class="font-semibold hover:underline" style="color:#6366f1;">{{ t.name }}</a>
+            <p class="text-xs" style="color:#94a3b8;">{{ t.username }}</p>
           </div>
         </div>
       </td>
-      <td style="color:#8fa896; font-size:13px;">{{ t.category|truncatechars:28 }}</td>
+      <td style="color:#94a3b8; font-size:13px;">{{ t.category|truncatechars:28 }}</td>
       <td style="color:{% if t.gain >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">
         {% if t.gain >= 0 %}+{% endif %}{{ t.gain|floatformat:2 }}%
       </td>
-      <td style="color:#f0f0f0;">{{ t.copiers }}</td>
+      <td style="color:#f8fafc;">{{ t.copiers }}</td>
       <td>
         {% if t.risk <= 3     %}<span class="badge badge-blue">Conservative</span>
         {% elif t.risk <= 6   %}<span class="badge badge-yellow">Swing trader</span>
         {% else               %}<span class="badge badge-red">Aggressive</span>{% endif %}
       </td>
-      <td style="color:#f0f0f0; font-weight:600;">${{ t.min_account_threshold|floatformat:0 }}</td>
+      <td style="color:#f8fafc; font-weight:600;">${{ t.min_account_threshold|floatformat:0 }}</td>
       <td>
         <div class="flex gap-2">
           <a href="{% url 'panel:trader_detail' t.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">View</a>
@@ -63,8 +63,8 @@
   </div>
 
   {% if page_obj.has_other_pages %}
-  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#1e3827;">
-    <p class="text-xs" style="color:#8fa896;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
+  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#263353;">
+    <p class="text-xs" style="color:#94a3b8;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
     <div class="flex gap-2">
       {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Prev</a>{% endif %}
       {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Next</a>{% endif %}
@@ -74,7 +74,7 @@
 
   {% else %}
   <div class="empty-state">
-    <p>No traders found. <a href="{% url 'panel:trader_create' %}" style="color:#B0D45A;">Create one</a></p>
+    <p>No traders found. <a href="{% url 'panel:trader_create' %}" style="color:#6366f1;">Create one</a></p>
   </div>
   {% endif %}
 </div>

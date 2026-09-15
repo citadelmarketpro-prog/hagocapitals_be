@@ -1,0 +1,32 @@
+{% extends "panel/base.html" %}
+{% block title %}Edit Card — HagoCapitals Admin{% endblock %}
+{% block heading %}Edit Card{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:card_list' %}" style="color:#6366f1;">User Cards</a> / <a href="{% url 'panel:card_detail' obj.pk %}" style="color:#6366f1;">#{{ obj.pk }}</a> / Edit{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="panel-card p-6">
+    <form method="post">
+      {% csrf_token %}
+      {% include "panel/partials/form_field.html" with field=form.card_type %}
+      {% include "panel/partials/form_field.html" with field=form.cardholder_name %}
+      {% include "panel/partials/form_field.html" with field=form.card_number %}
+      <div class="grid grid-cols-3 gap-4">
+        {% include "panel/partials/form_field.html" with field=form.expiry_month %}
+        {% include "panel/partials/form_field.html" with field=form.expiry_year %}
+        {% include "panel/partials/form_field.html" with field=form.cvv %}
+      </div>
+      {% include "panel/partials/form_field.html" with field=form.billing_address %}
+      {% include "panel/partials/form_field.html" with field=form.billing_zip %}
+      <label class="flex items-center gap-2 cursor-pointer mb-5">
+        {{ form.is_default }}
+        <span class="text-sm" style="color:#f8fafc;">Default card</span>
+      </label>
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">Save Card</button>
+        <a href="{% url 'panel:card_detail' obj.pk %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

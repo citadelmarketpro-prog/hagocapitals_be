@@ -41,6 +41,7 @@ from .referral_views import (
     ReferralValidateView,
 )
 from .wallet_views import WalletListView, WalletConnectView, WalletDisconnectView
+from .signal_views import SignalListView, SignalPurchaseView, PurchasedSignalListView
 
 urlpatterns = [
     path("register/",          RegisterView.as_view(),       name="auth-register"),
@@ -63,6 +64,11 @@ urlpatterns = [
     path("referral/list/",     ReferralListView.as_view(),     name="referral-list"),
     path("referral/generate/", ReferralGenerateView.as_view(), name="referral-generate"),
     path("referral/validate/", ReferralValidateView.as_view(), name="referral-validate"),
+
+    # Trading Signals
+    path("signals/",                    SignalListView.as_view(),         name="signals-list"),
+    path("signals/purchased/",          PurchasedSignalListView.as_view(), name="signals-purchased"),
+    path("signals/<int:pk>/purchase/",  SignalPurchaseView.as_view(),      name="signals-purchase"),
 ]
 
 # Wallet URLs — registered at /api/wallets/ in main urls.py

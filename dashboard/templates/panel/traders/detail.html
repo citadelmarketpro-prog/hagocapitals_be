@@ -2,7 +2,7 @@
 {% load humanize %}
 {% block title %}{{ obj.name }} — HagoCapitals Admin{% endblock %}
 {% block heading %}Trader Detail{% endblock %}
-{% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#B0D45A;">Traders</a> / {{ obj.name }}{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#6366f1;">Traders</a> / {{ obj.name }}{% endblock %}
 {% block header_actions %}
   <a href="{% url 'panel:trader_edit' obj.pk %}" class="btn btn-ghost text-xs">Edit</a>
   <a href="{% url 'panel:trader_delete' obj.pk %}" class="btn btn-danger text-xs">Delete</a>
@@ -17,58 +17,58 @@
       <div class="flex items-center gap-4 mb-5">
         {% if obj.avatar %}<img src="{{ obj.avatar.url }}" class="w-16 h-16 rounded-full object-cover" />
         {% else %}
-        <div class="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold" style="background:#2a4a38; color:#f0f0f0;">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold" style="background:#263353; color:#f8fafc;">
           {{ obj.name|first }}
         </div>
         {% endif %}
         <div>
-          <h2 class="font-bold text-base" style="color:#f0f0f0;">{{ obj.name }}</h2>
-          <p class="text-xs" style="color:#8fa896;">{{ obj.username }}</p>
+          <h2 class="font-bold text-base" style="color:#f8fafc;">{{ obj.name }}</h2>
+          <p class="text-xs" style="color:#94a3b8;">{{ obj.username }}</p>
         </div>
       </div>
-      <p class="text-sm mb-4" style="color:#8fa896;">{{ obj.bio }}</p>
+      <p class="text-sm mb-4" style="color:#94a3b8;">{{ obj.bio }}</p>
       <!-- Tags -->
       <div class="flex flex-wrap gap-1 mb-4">
         {% for tag in obj.tags %}<span class="badge badge-gray">{{ tag }}</span>{% endfor %}
       </div>
       <div class="grid grid-cols-2 gap-2">
-        <div class="p-3 rounded-lg text-center" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-xs" style="color:#8fa896;">Gain / ROI</p>
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Gain / ROI</p>
           <p class="font-bold" style="color:{% if obj.gain >= 0 %}#22c55e{% else %}#f87171{% endif %};">{% if obj.gain >= 0 %}+{% endif %}{{ obj.gain|floatformat:2 }}%</p>
         </div>
-        <div class="p-3 rounded-lg text-center" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-xs" style="color:#8fa896;">Win Rate</p>
-          <p class="font-bold" style="color:#B0D45A;">{{ obj.win_rate|floatformat:2 }}%</p>
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Win Rate</p>
+          <p class="font-bold" style="color:#6366f1;">{{ obj.win_rate|floatformat:2 }}%</p>
         </div>
-        <div class="p-3 rounded-lg text-center" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-xs" style="color:#8fa896;">Copiers</p>
-          <p class="font-bold" style="color:#f0f0f0;">{{ obj.copiers }}</p>
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Copiers</p>
+          <p class="font-bold" style="color:#f8fafc;">{{ obj.copiers }}</p>
         </div>
-        <div class="p-3 rounded-lg text-center" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-xs" style="color:#8fa896;">Min Account Threshold</p>
-          <p class="font-bold" style="color:#f0f0f0;">${{ obj.min_account_threshold|floatformat:0|intcomma }}</p>
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Min Account Threshold</p>
+          <p class="font-bold" style="color:#f8fafc;">${{ obj.min_account_threshold|floatformat:0|intcomma }}</p>
         </div>
-        <div class="p-3 rounded-lg text-center" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-xs" style="color:#8fa896;">Max Drawdown</p>
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Max Drawdown</p>
           <p class="font-bold" style="color:#f87171;">{{ obj.max_drawdown|floatformat:2 }}%</p>
         </div>
-        <div class="p-3 rounded-lg text-center" style="background:#0d2016; border:1px solid #1e3827;">
-          <p class="text-xs" style="color:#8fa896;">Trading Days</p>
-          <p class="font-bold" style="color:#f0f0f0;">{{ obj.trading_days }}</p>
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Trading Days</p>
+          <p class="font-bold" style="color:#f8fafc;">{{ obj.trading_days }}</p>
         </div>
       </div>
     </div>
 
     <!-- Category / Risk -->
     <div class="panel-card p-5">
-      <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:#8fa896;">Classification</p>
-      <div class="flex items-center justify-between py-2 border-b" style="border-color:#1e3827;">
-        <span class="text-sm" style="color:#8fa896;">Category</span>
-        <span class="text-sm" style="color:#f0f0f0;">{{ obj.category|default:"—" }}</span>
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:#94a3b8;">Classification</p>
+      <div class="flex items-center justify-between py-2 border-b" style="border-color:#263353;">
+        <span class="text-sm" style="color:#94a3b8;">Category</span>
+        <span class="text-sm" style="color:#f8fafc;">{{ obj.category|default:"—" }}</span>
       </div>
       <div class="flex items-center justify-between py-2">
-        <span class="text-sm" style="color:#8fa896;">Risk</span>
-        <span class="text-sm" style="color:#f0f0f0;">
+        <span class="text-sm" style="color:#94a3b8;">Risk</span>
+        <span class="text-sm" style="color:#f8fafc;">
           {% if obj.risk <= 3 %}Conservative{% elif obj.risk <= 6 %}Swing trader{% else %}Aggressive{% endif %}
           ({{ obj.risk }}/10)
         </span>
@@ -91,10 +91,10 @@
         <tbody>
         {% for c in copiers %}
         <tr>
-          <td><a href="{% url 'panel:user_detail' c.copier.pk %}" class="hover:underline" style="color:#B0D45A;">{{ c.copier.email }}</a></td>
-          <td style="color:#f0f0f0; font-weight:600;">${{ c.allocated_amount|floatformat:2|intcomma }}</td>
+          <td><a href="{% url 'panel:user_detail' c.copier.pk %}" class="hover:underline" style="color:#6366f1;">{{ c.copier.email }}</a></td>
+          <td style="color:#f8fafc; font-weight:600;">${{ c.allocated_amount|floatformat:2|intcomma }}</td>
           <td style="color:{% if c.pl >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">{% if c.pl >= 0 %}+{% endif %}${{ c.pl|floatformat:2|intcomma }}</td>
-          <td style="color:#8fa896; font-size:12px;">{{ c.started_at|date:"M d, Y" }}</td>
+          <td style="color:#94a3b8; font-size:12px;">{{ c.started_at|date:"M d, Y" }}</td>
           <td>
             <form method="post" action="{% url 'panel:trader_disconnect_copier' obj.pk c.copier.pk %}">
               {% csrf_token %}<button type="submit" class="btn btn-danger" style="padding:4px 10px; font-size:11px;">Disconnect</button>
@@ -126,12 +126,12 @@
         {% for c in cancel_requests %}
         <tr style="background:#1a1200;">
           <td>
-            <a href="{% url 'panel:user_detail' c.copier.pk %}" class="hover:underline font-medium" style="color:#B0D45A;">{{ c.copier.email }}</a>
-            <p class="text-xs" style="color:#8fa896;">{{ c.copier.get_full_name }}</p>
+            <a href="{% url 'panel:user_detail' c.copier.pk %}" class="hover:underline font-medium" style="color:#6366f1;">{{ c.copier.email }}</a>
+            <p class="text-xs" style="color:#94a3b8;">{{ c.copier.get_full_name }}</p>
           </td>
-          <td style="color:#f0f0f0; font-weight:600;">${{ c.allocated_amount|floatformat:2|intcomma }}</td>
+          <td style="color:#f8fafc; font-weight:600;">${{ c.allocated_amount|floatformat:2|intcomma }}</td>
           <td style="color:{% if c.pl >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">{% if c.pl >= 0 %}+{% endif %}${{ c.pl|floatformat:2|intcomma }}</td>
-          <td style="color:#8fa896; font-size:12px;">{{ c.started_at|date:"M d, Y" }}</td>
+          <td style="color:#94a3b8; font-size:12px;">{{ c.started_at|date:"M d, Y" }}</td>
           <td>
             <div class="flex gap-2">
               <form method="post" action="{% url 'panel:copy_trade_approve_cancel' c.pk %}">
@@ -165,18 +165,18 @@
         <tbody>
         {% for a in obj.top_traded %}
         <tr>
-          <td style="color:#f0f0f0;">{{ a.name }}</td>
-          <td style="color:#8fa896; font-size:12px;">{{ a.ticker }}</td>
+          <td style="color:#f8fafc;">{{ a.name }}</td>
+          <td style="color:#94a3b8; font-size:12px;">{{ a.ticker }}</td>
           <td style="color:#22c55e; font-weight:600;">+{{ a.avg_profit|floatformat:2 }}%</td>
           <td style="color:#f87171; font-weight:600;">{{ a.avg_loss|floatformat:2 }}%</td>
-          <td style="color:#B0D45A;">{{ a.profitable_pct|floatformat:2 }}%</td>
+          <td style="color:#6366f1;">{{ a.profitable_pct|floatformat:2 }}%</td>
         </tr>
         {% endfor %}
         </tbody>
       </table>
       </div>
       {% else %}
-      <div class="empty-state"><p>No top traded data. <a href="{% url 'panel:trader_edit' obj.pk %}" style="color:#B0D45A;">Add some</a></p></div>
+      <div class="empty-state"><p>No top traded data. <a href="{% url 'panel:trader_edit' obj.pk %}" style="color:#6366f1;">Add some</a></p></div>
       {% endif %}
     </div>
 
@@ -193,11 +193,11 @@
         <tbody>
         {% for a in obj.portfolio_breakdown %}
         <tr>
-          <td style="color:#f0f0f0;">{{ a.name }}</td>
+          <td style="color:#f8fafc;">{{ a.name }}</td>
           <td>
             <div class="flex items-center gap-2">
-              <div class="h-2 rounded-full" style="width:{{ a.percentage }}px; max-width:120px; background:#B0D45A;"></div>
-              <span style="color:#f0f0f0; font-weight:600;">{{ a.percentage|floatformat:1 }}%</span>
+              <div class="h-2 rounded-full" style="width:{{ a.percentage }}px; max-width:120px; background:#6366f1;"></div>
+              <span style="color:#f8fafc; font-weight:600;">{{ a.percentage|floatformat:1 }}%</span>
             </div>
           </td>
         </tr>
@@ -206,14 +206,14 @@
       </table>
       </div>
       {% else %}
-      <div class="empty-state"><p>No allocation data. <a href="{% url 'panel:trader_edit' obj.pk %}" style="color:#B0D45A;">Add some</a></p></div>
+      <div class="empty-state"><p>No allocation data. <a href="{% url 'panel:trader_edit' obj.pk %}" style="color:#6366f1;">Add some</a></p></div>
       {% endif %}
     </div>
 
     <!-- Frequently Traded -->
     <div class="panel-card p-5">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-semibold" style="color:#f0f0f0;">Frequently Traded</h3>
+        <h3 class="text-sm font-semibold" style="color:#f8fafc;">Frequently Traded</h3>
         <a href="{% url 'panel:trader_edit' obj.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
       </div>
       {% if obj.frequently_traded %}
@@ -221,7 +221,7 @@
         {% for t in obj.frequently_traded %}<span class="badge badge-gray">{{ t }}</span>{% endfor %}
       </div>
       {% else %}
-      <p class="text-xs" style="color:#8fa896;">None set.</p>
+      <p class="text-xs" style="color:#94a3b8;">None set.</p>
       {% endif %}
     </div>
   </div>

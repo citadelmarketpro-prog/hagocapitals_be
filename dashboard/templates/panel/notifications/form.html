@@ -1,0 +1,44 @@
+{% extends "panel/base.html" %}
+{% block title %}Send Notification — HagoCapitals Admin{% endblock %}
+{% block heading %}Send Notification{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:notification_list' %}" style="color:#6366f1;">Notifications</a> / Send{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="panel-card p-6">
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-5">
+        <label class="form-label">Send To *</label>
+        <select name="target" id="id_target" class="form-control">
+          {% for val, label in form.fields.target.choices %}<option value="{{ val }}" {% if form.target.value == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="mb-5" id="user-field-wrap">
+        <label class="form-label">User</label>
+        <select name="user" id="id_user" class="form-control">
+          <option value="">— Select a user —</option>
+          {% for u in form.fields.user.queryset %}<option value="{{ u.pk }}" {% if form.user.value|stringformat:"s" == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.email }}</option>{% endfor %}
+        </select>
+        {% if form.user.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ form.user.errors.0 }}</p>{% endif %}
+      </div>
+      {% include "panel/partials/form_field.html" with field=form.notif_type %}
+      {% include "panel/partials/form_field.html" with field=form.title %}
+      {% include "panel/partials/form_field.html" with field=form.body %}
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">Send Notification</button>
+        <a href="{% url 'panel:notification_list' %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  const targetSelect = document.getElementById("id_target");
+  const userWrap = document.getElementById("user-field-wrap");
+  function syncUserField() {
+    userWrap.style.display = targetSelect.value === "all" ? "none" : "";
+  }
+  targetSelect.addEventListener("change", syncUserField);
+  syncUserField();
+</script>
+{% endblock %}

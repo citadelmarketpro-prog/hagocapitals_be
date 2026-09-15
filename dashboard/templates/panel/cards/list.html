@@ -1,0 +1,59 @@
+{% extends "panel/base.html" %}
+{% block title %}User Cards — HagoCapitals Admin{% endblock %}
+{% block heading %}User Cards{% endblock %}
+{% block breadcrumb %}Card details captured from users{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-3 mb-6">
+  <form method="get" class="flex flex-wrap gap-3">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search email, name, last 4 digits…" class="form-control" style="max-width:280px;" />
+    <button type="submit" class="btn btn-primary">Search</button>
+    {% if q %}<a href="{% url 'panel:card_list' %}" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="panel-card">
+  {% if page_obj.object_list %}
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead><tr><th>User</th><th>Cardholder</th><th>Card</th><th>Expiry</th><th>Default</th><th>Added</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for c in page_obj %}
+    <tr>
+      <td><a href="{% url 'panel:user_detail' c.user.pk %}" style="color:#6366f1;" class="hover:underline text-xs">{{ c.user.email|truncatechars:24 }}</a></td>
+      <td style="color:#f8fafc;">{{ c.cardholder_name }}</td>
+      <td>
+        <span class="badge badge-gray">{{ c.get_card_type_display }}</span>
+        <code class="text-xs font-mono ml-1" style="color:#94a3b8;">{{ c.masked_number }}</code>
+      </td>
+      <td style="color:#94a3b8; font-size:13px;">{{ c.expiry_month }}/{{ c.expiry_year }}</td>
+      <td>{% if c.is_default %}<span class="badge badge-green">Default</span>{% else %}<span style="color:#475569;">—</span>{% endif %}</td>
+      <td style="font-size:12px; color:#94a3b8; white-space:nowrap;">{{ c.created_at|date:"M d, Y" }}</td>
+      <td>
+        <div class="flex gap-2">
+          <a href="{% url 'panel:card_detail' c.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">View</a>
+          <a href="{% url 'panel:card_edit' c.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
+          <a href="{% url 'panel:card_delete' c.pk %}" class="btn btn-danger" style="padding:4px 10px; font-size:11px;">Delete</a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#263353;">
+    <p class="text-xs" style="color:#94a3b8;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
+    <div class="flex gap-2">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Prev</a>{% endif %}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Next</a>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state"><p>No cards captured yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -24,9 +24,9 @@
 {% with pending=page_obj.object_list %}
 {% if status_f == "cancel_requested" or not status_f %}
 <div class="panel-card mb-6">
-  <div class="flex items-center gap-3 px-5 py-4 border-b" style="border-color:#1e3827;">
+  <div class="flex items-center gap-3 px-5 py-4 border-b" style="border-color:#263353;">
     <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
-    <h3 class="font-semibold" style="color:#f0f0f0;">
+    <h3 class="font-semibold" style="color:#f8fafc;">
       Cancel Requests
       <span class="ml-2 text-xs px-2 py-0.5 rounded-full font-normal" style="background:#2a1f00; color:#fbbf24;">
         Requires Action
@@ -43,17 +43,17 @@
     {% if rel.status == "cancel_requested" %}
     <tr style="background:#1a1200;">
       <td>
-        <a href="{% url 'panel:user_detail' rel.copier.pk %}" style="color:#B0D45A;" class="hover:underline font-medium">{{ rel.copier.email }}</a>
-        <p class="text-xs" style="color:#8fa896;">{{ rel.copier.get_full_name }}</p>
+        <a href="{% url 'panel:user_detail' rel.copier.pk %}" style="color:#6366f1;" class="hover:underline font-medium">{{ rel.copier.email }}</a>
+        <p class="text-xs" style="color:#94a3b8;">{{ rel.copier.get_full_name }}</p>
       </td>
       <td>
-        <a href="{% url 'panel:trader_detail' rel.trader.pk %}" style="color:#f0f0f0;" class="hover:underline font-medium">{{ rel.trader.name }}</a>
+        <a href="{% url 'panel:trader_detail' rel.trader.pk %}" style="color:#f8fafc;" class="hover:underline font-medium">{{ rel.trader.name }}</a>
       </td>
-      <td style="color:#f0f0f0; font-weight:600;">${{ rel.allocated_amount|floatformat:2|intcomma }}</td>
+      <td style="color:#f8fafc; font-weight:600;">${{ rel.allocated_amount|floatformat:2|intcomma }}</td>
       <td style="color:{% if rel.pl >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">
         {% if rel.pl >= 0 %}+{% endif %}${{ rel.pl|floatformat:2|intcomma }}
       </td>
-      <td style="color:#8fa896; font-size:12px;">{{ rel.started_at|date:"M d, Y" }}</td>
+      <td style="color:#94a3b8; font-size:12px;">{{ rel.started_at|date:"M d, Y" }}</td>
       <td>
         <div class="flex gap-2">
           <form method="post" action="{% url 'panel:copy_trade_approve_cancel' rel.pk %}">
@@ -69,7 +69,7 @@
     </tr>
     {% endif %}
     {% empty %}
-    <tr><td colspan="6" style="text-align:center; color:#8fa896; padding:20px;">No cancel requests.</td></tr>
+    <tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:20px;">No cancel requests.</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -80,8 +80,8 @@
 
 <!-- All Copy Relationships -->
 <div class="panel-card">
-  <div class="px-5 py-4 border-b" style="border-color:#1e3827;">
-    <h3 class="font-semibold" style="color:#f0f0f0;">All Copy Relationships</h3>
+  <div class="px-5 py-4 border-b" style="border-color:#263353;">
+    <h3 class="font-semibold" style="color:#f8fafc;">All Copy Relationships</h3>
   </div>
   {% if page_obj.object_list %}
   <div class="table-wrapper">
@@ -93,11 +93,11 @@
     {% for rel in page_obj %}
     <tr>
       <td>
-        <a href="{% url 'panel:user_detail' rel.copier.pk %}" style="color:#B0D45A;" class="hover:underline font-medium">{{ rel.copier.email }}</a>
-        <p class="text-xs" style="color:#8fa896;">{{ rel.copier.get_full_name }}</p>
+        <a href="{% url 'panel:user_detail' rel.copier.pk %}" style="color:#6366f1;" class="hover:underline font-medium">{{ rel.copier.email }}</a>
+        <p class="text-xs" style="color:#94a3b8;">{{ rel.copier.get_full_name }}</p>
       </td>
       <td>
-        <a href="{% url 'panel:trader_detail' rel.trader.pk %}" style="color:#f0f0f0;" class="font-medium hover:underline">{{ rel.trader.name }}</a>
+        <a href="{% url 'panel:trader_detail' rel.trader.pk %}" style="color:#f8fafc;" class="font-medium hover:underline">{{ rel.trader.name }}</a>
       </td>
       <td>
         {% if rel.status == "active" %}
@@ -108,11 +108,11 @@
           <span class="badge badge-gray">Cancelled</span>
         {% endif %}
       </td>
-      <td style="color:#f0f0f0; font-weight:600;">${{ rel.allocated_amount|floatformat:2|intcomma }}</td>
+      <td style="color:#f8fafc; font-weight:600;">${{ rel.allocated_amount|floatformat:2|intcomma }}</td>
       <td style="color:{% if rel.pl >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">
         {% if rel.pl >= 0 %}+{% endif %}${{ rel.pl|floatformat:2|intcomma }}
       </td>
-      <td style="color:#8fa896; font-size:12px;">{{ rel.started_at|date:"M d, Y" }}</td>
+      <td style="color:#94a3b8; font-size:12px;">{{ rel.started_at|date:"M d, Y" }}</td>
       <td>
         <div class="flex gap-2">
           {% if rel.status == "cancel_requested" %}
@@ -136,8 +136,8 @@
   </div>
 
   {% if page_obj.has_other_pages %}
-  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#1e3827;">
-    <p class="text-xs" style="color:#8fa896;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
+  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#263353;">
+    <p class="text-xs" style="color:#94a3b8;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
     <div class="flex gap-2">
       {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status_f }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Prev</a>{% endif %}
       {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status_f }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Next</a>{% endif %}

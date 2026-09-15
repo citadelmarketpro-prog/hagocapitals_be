@@ -2,7 +2,7 @@
 {% load humanize %}
 {% block title %}Transaction {{ obj.tx_id }} — HagoCapitals Admin{% endblock %}
 {% block heading %}Transaction Detail{% endblock %}
-{% block breadcrumb %}<a href="{% url 'panel:transaction_list' %}" style="color:#B0D45A;">Transactions</a> / {{ obj.tx_id|truncatechars:16 }}…{% endblock %}
+{% block breadcrumb %}<a href="{% if obj.tx_type == 'deposit' %}{% url 'panel:deposit_list' %}{% else %}{% url 'panel:withdrawal_list' %}{% endif %}" style="color:#6366f1;">{% if obj.tx_type == 'deposit' %}Deposits{% else %}Withdrawals{% endif %}</a> / {{ obj.tx_id|truncatechars:16 }}…{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl">
@@ -20,55 +20,55 @@
           {% elif obj.status == "pending"  %}<span class="badge badge-yellow">Pending</span>
           {% else %}<span class="badge badge-red">Rejected</span>{% endif %}
         </div>
-        <p class="text-xl font-bold mt-2 truncate" title="${{ obj.amount_usd|floatformat:2|intcomma }}" style="color:#f0f0f0;">${{ obj.amount_usd|floatformat:2|intcomma }}</p>
-        <p class="text-sm mt-1" style="color:#8fa896;">{{ obj.units }} {{ obj.asset }}</p>
+        <p class="text-xl font-bold mt-2 truncate" title="${{ obj.amount_usd|floatformat:2|intcomma }}" style="color:#f8fafc;">${{ obj.amount_usd|floatformat:2|intcomma }}</p>
+        <p class="text-sm mt-1" style="color:#94a3b8;">{{ obj.units }} {{ obj.asset }}</p>
       </div>
-      <p class="text-xs text-right" style="color:#8fa896;">{{ obj.created_at|date:"F d, Y H:i" }}</p>
+      <p class="text-xs text-right" style="color:#94a3b8;">{{ obj.created_at|date:"F d, Y H:i" }}</p>
     </div>
 
     <!-- Details grid -->
-    <div class="grid grid-cols-2 gap-y-4 gap-x-6 mb-6 py-4 border-y" style="border-color:#1e3827;">
+    <div class="grid grid-cols-2 gap-y-4 gap-x-6 mb-6 py-4 border-y" style="border-color:#263353;">
       <div>
-        <p class="text-xs uppercase tracking-widest mb-1" style="color:#8fa896;">User</p>
-        <a href="{% url 'panel:user_detail' obj.user.pk %}" class="font-medium hover:underline" style="color:#B0D45A;">{{ obj.user.email }}</a>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">User</p>
+        <a href="{% url 'panel:user_detail' obj.user.pk %}" class="font-medium hover:underline" style="color:#6366f1;">{{ obj.user.email }}</a>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest mb-1" style="color:#8fa896;">Asset</p>
-        <p class="font-medium" style="color:#f0f0f0;">{{ obj.asset }}</p>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Asset</p>
+        <p class="font-medium" style="color:#f8fafc;">{{ obj.asset }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest mb-1" style="color:#8fa896;">Units</p>
-        <p class="font-medium font-mono text-sm" style="color:#f0f0f0;">{{ obj.units }}</p>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Units</p>
+        <p class="font-medium font-mono text-sm" style="color:#f8fafc;">{{ obj.units }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest mb-1" style="color:#8fa896;">TX ID</p>
-        <p class="font-mono text-xs break-all" style="color:#8fa896;">{{ obj.tx_id }}</p>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">TX ID</p>
+        <p class="font-mono text-xs break-all" style="color:#94a3b8;">{{ obj.tx_id }}</p>
       </div>
       {% if obj.tx_type == "withdrawal" %}
       <div>
-        <p class="text-xs uppercase tracking-widest mb-1" style="color:#8fa896;">Withdrawal Source</p>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Withdrawal Source</p>
         {% if obj.withdraw_from_label %}
           <span class="badge {% if obj.withdraw_from == 'roi' %}badge-blue{% else %}badge-green{% endif %}">{{ obj.withdraw_from_label }}</span>
         {% else %}
-          <p class="text-xs" style="color:#8fa896;">Not recorded (legacy transaction)</p>
+          <p class="text-xs" style="color:#94a3b8;">Not recorded (legacy transaction)</p>
         {% endif %}
       </div>
       {% endif %}
       {% if obj.wallet_address %}
       <div class="col-span-2">
-        <p class="text-xs uppercase tracking-widest mb-1" style="color:#8fa896;">Wallet Address</p>
-        <p class="font-mono text-xs break-all p-2 rounded" style="background:#0d2016; color:#f0f0f0;">{{ obj.wallet_address }}</p>
+        <p class="text-xs uppercase tracking-widest mb-1" style="color:#94a3b8;">Wallet Address</p>
+        <p class="font-mono text-xs break-all p-2 rounded" style="background:#131c2e; color:#f8fafc;">{{ obj.wallet_address }}</p>
       </div>
       {% endif %}
       {% if obj.tx_type == "deposit" %}
       <div class="col-span-2">
-        <p class="text-xs uppercase tracking-widest mb-2" style="color:#8fa896;">Payment Proof</p>
+        <p class="text-xs uppercase tracking-widest mb-2" style="color:#94a3b8;">Payment Proof</p>
         {% if obj.receipt %}
           <a href="{{ obj.receipt.url }}" target="_blank">
-            <img src="{{ obj.receipt.url }}" class="rounded object-cover" style="max-height:220px; border:1px solid #1e3827;" />
+            <img src="{{ obj.receipt.url }}" class="rounded object-cover" style="max-height:220px; border:1px solid #263353;" />
           </a>
         {% else %}
-          <p class="text-sm" style="color:#4a6655;">No receipt uploaded</p>
+          <p class="text-sm" style="color:#475569;">No receipt uploaded</p>
         {% endif %}
       </div>
       {% endif %}
@@ -76,8 +76,8 @@
 
     <!-- Actions -->
     {% if obj.status == "pending" %}
-    <div class="p-4 rounded-xl mb-0" style="background:#0d2016; border:1px solid #1e3827;">
-      <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:#8fa896;">Actions</p>
+    <div class="p-4 rounded-xl mb-0" style="background:#131c2e; border:1px solid #263353;">
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:#94a3b8;">Actions</p>
       <div class="flex gap-3">
         <form method="post" action="{% url 'panel:transaction_approve' obj.pk %}">
           {% csrf_token %}
@@ -96,7 +96,7 @@
       </div>
     </div>
     {% elif obj.status == "completed" %}
-    <div class="p-3 rounded-lg flex items-center gap-2" style="background:#1a3020; border:1px solid #1e3827;">
+    <div class="p-3 rounded-lg flex items-center gap-2" style="background:#1a3020; border:1px solid #263353;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
       <p class="text-sm font-medium" style="color:#22c55e;">
         {% if obj.tx_type == "deposit" %}${{ obj.amount_usd|floatformat:2|intcomma }} was added to {{ obj.user.email }}'s balance.
@@ -111,7 +111,7 @@
     {% endif %}
   </div>
 
-  <a href="{% url 'panel:transaction_list' %}" class="btn btn-ghost text-xs">
+  <a href="{% if obj.tx_type == 'deposit' %}{% url 'panel:deposit_list' %}{% else %}{% url 'panel:withdrawal_list' %}{% endif %}" class="btn btn-ghost text-xs">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     Back to list
   </a>

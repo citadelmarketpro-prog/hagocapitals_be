@@ -1,0 +1,78 @@
+{% extends "panel/base.html" %}
+{% block title %}Trading Signals — HagoCapitals Admin{% endblock %}
+{% block heading %}Trading Signals{% endblock %}
+{% block breadcrumb %}{{ active_count }} active of {{ total_count }} total{% endblock %}
+{% block header_actions %}<a href="{% url 'panel:signal_create' %}" class="btn btn-primary text-xs">+ Add Signal</a>{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap gap-3 mb-6">
+  <form method="get" class="flex flex-wrap gap-3">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by name…" class="form-control" style="max-width:240px;" />
+    <select name="status" class="form-control" style="max-width:160px;">
+      <option value="">All status</option>
+      {% for val, label in status_choices %}<option value="{{ val }}" {% if status_f == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    {% if q or status_f %}<a href="{% url 'panel:signal_list' %}" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="panel-card">
+  {% if page_obj.object_list %}
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead><tr><th>Name</th><th>Type</th><th>Action</th><th>Price</th><th>Strength</th><th>Risk</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for s in page_obj %}
+    <tr>
+      <td>
+        <div class="flex items-center gap-2">
+          <span class="font-medium" style="color:#f8fafc;">{{ s.name }}</span>
+          {% if s.is_featured %}<span class="badge badge-yellow" style="font-size:9px;">Featured</span>{% endif %}
+        </div>
+      </td>
+      <td><span class="badge badge-gray">{{ s.get_signal_type_display }}</span></td>
+      <td style="color:#94a3b8; font-size:13px;">{{ s.action }}</td>
+      <td style="color:#f8fafc; font-weight:600;">${{ s.price }}</td>
+      <td style="color:#94a3b8; font-size:13px;">{{ s.signal_strength }}%</td>
+      <td>
+        {% if s.risk_level == "low" %}<span class="badge badge-green">Low</span>
+        {% elif s.risk_level == "medium" %}<span class="badge badge-yellow">Medium</span>
+        {% else %}<span class="badge badge-red">High</span>{% endif %}
+      </td>
+      <td>
+        {% if s.status == "active" %}<span class="badge badge-green">Active</span>
+        {% elif s.status == "completed" %}<span class="badge badge-blue">Completed</span>
+        {% else %}<span class="badge badge-gray">Expired</span>{% endif %}
+        {% if not s.is_active %}<span class="badge badge-red" style="font-size:9px;">Hidden</span>{% endif %}
+      </td>
+      <td>
+        <div class="flex gap-2">
+          <a href="{% url 'panel:signal_detail' s.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">View</a>
+          <a href="{% url 'panel:signal_edit' s.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
+          <a href="{% url 'panel:signal_delete' s.pk %}" class="btn btn-danger" style="padding:4px 10px; font-size:11px;">Delete</a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div class="flex items-center justify-between px-4 py-3 border-t" style="border-color:#263353;">
+    <p class="text-xs" style="color:#94a3b8;">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</p>
+    <div class="flex gap-2">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ q }}&status={{ status_f }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Prev</a>{% endif %}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ q }}&status={{ status_f }}" class="btn btn-ghost" style="padding:5px 12px; font-size:12px;">Next</a>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <p>No signals yet. <a href="{% url 'panel:signal_create' %}" style="color:#6366f1;">Add the first one</a></p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

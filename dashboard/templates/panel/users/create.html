@@ -1,7 +1,7 @@
 {% extends "panel/base.html" %}
 {% block title %}Create User — HagoCapitals Admin{% endblock %}
 {% block heading %}Create User{% endblock %}
-{% block breadcrumb %}<a href="{% url 'panel:user_list' %}" style="color:#B0D45A;">Users</a> / Create{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:user_list' %}" style="color:#6366f1;">Users</a> / Create{% endblock %}
 
 {% block content %}
 <div class="max-w-lg">
@@ -41,14 +41,14 @@
         <input type="password" name="password2" class="form-control" required />
         {% for err in form.password2.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ err }}</p>{% endfor %}
       </div>
-      <div class="flex gap-4 mb-6 p-4 rounded-lg" style="background:#0d2016; border:1px solid #1e3827;">
+      <div class="flex gap-4 mb-6 p-4 rounded-lg" style="background:#131c2e; border:1px solid #263353;">
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" name="is_staff" {% if form.is_staff.value %}checked{% endif %} style="accent-color:#B0D45A; width:16px; height:16px;" />
-          <span class="text-sm" style="color:#f0f0f0;">Staff</span>
+          <input type="checkbox" name="is_staff" {% if form.is_staff.value %}checked{% endif %} style="accent-color:#6366f1; width:16px; height:16px;" />
+          <span class="text-sm" style="color:#f8fafc;">Staff</span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" name="is_superuser" {% if form.is_superuser.value %}checked{% endif %} style="accent-color:#B0D45A; width:16px; height:16px;" />
-          <span class="text-sm" style="color:#f0f0f0;">Superuser</span>
+          <input type="checkbox" name="is_superuser" {% if form.is_superuser.value %}checked{% endif %} style="accent-color:#6366f1; width:16px; height:16px;" />
+          <span class="text-sm" style="color:#f8fafc;">Superuser</span>
         </label>
       </div>
       <div class="flex gap-3">

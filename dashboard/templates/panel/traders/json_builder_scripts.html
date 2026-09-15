@@ -7,23 +7,23 @@
      TraderForm change needed. -->
 <style>
   .jb-row     { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .jb-input   { flex:1; min-width:120px; padding:8px 12px; background:#0e1a12; border:1px solid #1e3827; border-radius:6px; color:#f0f0f0; font-size:13px; }
-  .jb-input::placeholder { color:#4a6655; }
-  .jb-select  { padding:8px 12px; background:#0e1a12; border:1px solid #1e3827; border-radius:6px; color:#f0f0f0; font-size:13px; }
-  .jb-btn-add    { padding:8px 16px; background:#B0D45A; color:#0d2016; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .jb-input   { flex:1; min-width:120px; padding:8px 12px; background:#131c2e; border:1px solid #263353; border-radius:6px; color:#f8fafc; font-size:13px; }
+  .jb-input::placeholder { color:#475569; }
+  .jb-select  { padding:8px 12px; background:#131c2e; border:1px solid #263353; border-radius:6px; color:#f8fafc; font-size:13px; }
+  .jb-btn-add    { padding:8px 16px; background:#6366f1; color:#131c2e; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
   .jb-btn-add:hover { opacity:.9; }
   .jb-btn-remove { padding:6px 12px; background:transparent; color:#f87171; border:1px solid #4a2020; border-radius:6px; font-size:12px; cursor:pointer; white-space:nowrap; }
   .jb-btn-remove:hover { background:#2a1414; }
-  .jb-chip    { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:#132b1a; border:1px solid #244534; color:#B0D45A; border-radius:999px; font-size:12px; font-weight:500; }
-  .jb-chip button { background:none; border:none; color:#B0D45A; font-weight:700; cursor:pointer; font-size:13px; line-height:1; padding:0; }
+  .jb-chip    { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:#1b2438; border:1px solid #263353; color:#6366f1; border-radius:999px; font-size:12px; font-weight:500; }
+  .jb-chip button { background:none; border:none; color:#6366f1; font-weight:700; cursor:pointer; font-size:13px; line-height:1; padding:0; }
   .jb-chip button:hover { color:#f87171; }
   .jb-chips   { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
-  .jb-card    { padding:12px; background:#0e1a12; border:1px solid #1e3827; border-radius:6px; }
+  .jb-card    { padding:12px; background:#131c2e; border:1px solid #263353; border-radius:6px; }
   .jb-cards   { display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
   .jb-grid2   { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
   .jb-grid3   { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
-  .jb-hint    { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:4px; font-size:11px; color:#8fa896; text-align:center; }
-  .jb-pct     { font-size:13px; color:#8fa896; }
+  .jb-hint    { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:4px; font-size:11px; color:#94a3b8; text-align:center; }
+  .jb-pct     { font-size:13px; color:#94a3b8; }
 
   /* Narrow phones: stack the asset-row sub-grids to 1 column instead of
      squeezing 2-3 fields into ~90px each. */
