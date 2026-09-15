@@ -15,7 +15,10 @@ from core.models import (
     AdminWallet, Card, CopyRelationship, CopyTrade, Notification,
     SavedPaymentMethod, Signal, Trader, Transaction, WalletConnection,
 )
-from core.email_service import send_user_deposit_approved_email, send_custom_email, render_custom_email_preview
+from core.email_service import (
+    send_custom_email, send_kyc_approved_email, send_user_deposit_approved_email,
+    render_custom_email_preview,
+)
 from core.fmp_client import search_symbols
 from .decorators import superuser_required
 from .models import EmailCampaign, EmailCampaignRecipient
@@ -109,9 +112,16 @@ def user_detail(request, pk):
 def user_edit(request, pk):
     import logging as _log
     obj  = get_object_or_404(User, pk=pk)
+    was_approved = obj.kyc_status == "approved"
     form = UserEditForm(request.POST or None, instance=obj)
     if form.is_valid():
         form.save()
+        # Admins can also flip kyc_status to "approved" from this general
+        # edit form (not just the dedicated Approve KYC button) — send the
+        # same verification email, but only on the actual transition so
+        # re-saving an already-approved user doesn't re-send it.
+        if not was_approved and obj.kyc_status == "approved":
+            send_kyc_approved_email(obj)
         messages.success(request, f"User {obj.email} updated.")
         return redirect("panel:user_detail", pk=pk)
     if request.method == "POST":
@@ -156,6 +166,7 @@ def user_approve_kyc(request, pk):
     obj.save(update_fields=["kyc_status","kyc_reviewed_at","kyc_reject_reason"])
     Notification.objects.create(user=obj, notif_type="kyc", title="KYC Approved",
         body="Your identity verification has been approved. You now have full access.")
+    send_kyc_approved_email(obj)
     messages.success(request, f"KYC approved for {obj.email}.")
     return redirect("panel:user_detail", pk=pk)
 

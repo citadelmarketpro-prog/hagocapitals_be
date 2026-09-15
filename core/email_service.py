@@ -510,6 +510,46 @@ def send_welcome_email(user) -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# KYC / identity verification approved
+# ─────────────────────────────────────────────────────────────────────────────
+
+def send_kyc_approved_email(user) -> bool:
+    name     = user.first_name or user.username or "Trader"
+    frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+    body = f"""
+    {_header_html()}
+    <div class="body-content">
+        <div class="greeting">Hello {name},</div>
+        <div class="heading">Verification Successfully Completed</div>
+        <div class="text">
+            Your identity verification has been approved.
+        </div>
+        <div style="margin:22px 0 26px;">
+            <span style="font-size:13px; color:#4b5c4b; font-weight:600;">Account Verification:</span>
+            <span class="badge badge-approved" style="margin-left:8px;">&#10003; Verified</span>
+        </div>
+        <div class="text">
+            You can now fund your account and access the available traders and
+            mirror-trading strategies from your client dashboard.
+        </div>
+        <div style="text-align:center; margin:32px 0;">
+            <a href="{frontend}/dashboard" class="btn">
+                Go to Client Dashboard
+            </a>
+        </div>
+        <div class="divider"></div>
+        <div class="signature">
+            <p>Thank you,</p>
+            <p class="signature-name">Hago Capitals</p>
+            <p>Account Verification Department</p>
+        </div>
+    </div>
+    {_footer_html(user.email)}
+    """
+    return send_email(user.email, "Verification Successfully Completed", _wrap(body))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Email verification (OTP code)
 # ─────────────────────────────────────────────────────────────────────────────
 

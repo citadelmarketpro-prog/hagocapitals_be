@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from .email_service import send_kyc_approved_email
 from .models import (
     AdminWallet, Card, CopyRelationship, News, Notification,
     Signal, Trader, Transaction, User, CopyTrade, WalletConnection,
@@ -50,6 +51,18 @@ class UserAdmin(admin.ModelAdmin):
             "fields": ("date_joined", "last_login"),
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        # Same "Verification Successfully Completed" email as the custom
+        # panel's Approve KYC action / user-edit form — sent once, only on
+        # the actual not-approved -> approved transition, regardless of
+        # which admin surface the change came from.
+        was_approved = False
+        if change:
+            was_approved = User.objects.filter(pk=obj.pk, kyc_status="approved").exists()
+        super().save_model(request, obj, form, change)
+        if not was_approved and obj.kyc_status == "approved":
+            send_kyc_approved_email(obj)
 
 
 @admin.register(News)
