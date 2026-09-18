@@ -1,7 +1,7 @@
 {% extends "panel/base.html" %}
 {% block title %}Investors — HagoCapitals Admin{% endblock %}
 {% block heading %}Investors{% endblock %}
-{% block breadcrumb %}All users copying traders{% endblock %}
+{% block breadcrumb %}All users with a funded balance{% endblock %}
 
 {% block content %}
 <!-- Filters -->
@@ -35,6 +35,7 @@
           <input type="checkbox" id="select-all" onchange="toggleAll(this)" />
         </th>
         <th>Investor</th>
+        <th>Balance</th>
         <th>Active</th>
         <th>Cancel Req.</th>
         <th>Trades</th>
@@ -53,6 +54,7 @@
         <a href="{% url 'panel:user_detail' u.pk %}" style="color:#6366f1;" class="font-semibold hover:underline">{{ u.email }}</a>
         <p class="text-xs" style="color:#94a3b8;">{{ u.get_full_name|default:"—" }}</p>
       </td>
+      <td style="color:#f8fafc;" class="font-semibold">${{ u.balance|floatformat:2 }}</td>
       <td><span class="badge badge-green">{{ u.active_count }}</span></td>
       <td>
         {% if u.cancel_count > 0 %}
@@ -93,7 +95,7 @@
 
   {% else %}
   <div class="empty-state">
-    <p>No investors found. Users appear here once they start copying traders.</p>
+    <p>No investors found. Users appear here once their account balance is greater than $0.</p>
   </div>
   {% endif %}
 </div>

@@ -492,13 +492,13 @@ def copy_trade_reject_cancel(request, pk):
 
 @superuser_required
 def investor_list(request):
-    """Unique users who are copying at least one trader."""
+    """Users with a positive balance — i.e. everyone eligible to have a trade run for them."""
     q = request.GET.get("q", "").strip()
-    qs = User.objects.filter(copying__isnull=False).distinct().annotate(
+    qs = User.objects.filter(balance__gt=0).annotate(
         trader_count=Count("copying", distinct=True),
         active_count=Count("copying", filter=Q(copying__status="active"), distinct=True),
         cancel_count=Count("copying", filter=Q(copying__status="cancel_requested"), distinct=True),
-    ).order_by("-date_joined").prefetch_related("copying__trader")
+    ).order_by("-balance").prefetch_related("copying__trader")
     if q:
         qs = qs.filter(Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
     page = Paginator(qs, 30).get_page(request.GET.get("page"))
