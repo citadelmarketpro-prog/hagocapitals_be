@@ -25,8 +25,8 @@ from .models import EmailCampaign, EmailCampaignRecipient
 from .trader_seed import seed_trader_demo_data
 from .forms import (
     AddTradeForm, AdminWalletForm, AdjustFundsForm, CardEditForm, CustomEmailForm,
-    EditCopyTradeForm, NotificationForm, RejectKycForm, SetUserPasswordForm,
-    SignalForm, TraderForm, WalletConnectionForm,
+    EditCopyTradeForm, NotificationForm, RejectKycForm, RejectTransactionForm, SetUserPasswordForm,
+    SignalForm, TraderForm, TransactionEditForm, WalletConnectionForm,
     UserCreateForm, UserEditForm,
     ASSET_MAP, ASSET_ICON_MAP,
 )
@@ -342,7 +342,31 @@ def withdrawal_list(request):
 
 @superuser_required
 def transaction_detail(request, pk):
-    return render(request, "panel/transactions/detail.html", {"obj": get_object_or_404(Transaction, pk=pk)})
+    obj = get_object_or_404(Transaction, pk=pk)
+    edit_form = TransactionEditForm(instance=obj) if obj.status == "pending" else None
+    return render(request, "panel/transactions/detail.html", {"obj": obj, "edit_form": edit_form})
+
+
+@superuser_required
+@require_POST
+def transaction_edit(request, pk):
+    tx = get_object_or_404(Transaction, pk=pk)
+    if tx.status != "pending":
+        messages.error(request, "Only pending transactions can be edited.")
+        return redirect("panel:transaction_detail", pk=pk)
+    data = request.POST.copy()
+    data["units"] = data.get("amount_usd", tx.units)  # units tracks the USD amount 1:1 on this platform
+    form = TransactionEditForm(data, instance=tx)
+    if form.is_valid():
+        # Editing corrects the request (e.g. the user actually sent a different
+        # amount than they entered) — it must never itself flip the status;
+        # approve/reject are the only actions that do that.
+        form.instance.status = tx.status
+        form.save()
+        messages.success(request, "Transaction details updated.")
+    else:
+        messages.error(request, "Could not save changes — please check the values entered.")
+    return redirect("panel:transaction_detail", pk=pk)
 
 
 @superuser_required
@@ -388,10 +412,14 @@ def transaction_reject(request, pk):
     if tx.status != "pending":
         messages.error(request, "Only pending transactions can be rejected.")
         return redirect("panel:transaction_detail", pk=pk)
+    form = RejectTransactionForm(request.POST)
+    note = form.cleaned_data["note"].strip() if form.is_valid() else ""
     tx.status = "rejected"
-    tx.save(update_fields=["status"])
-    Notification.objects.create(user=tx.user, notif_type="wallet", title="Transaction Rejected",
-        body=f"Your {tx.tx_type} of ${tx.amount_usd:,.2f} ({tx.asset}) was not approved. Please contact support.")
+    tx.admin_note = note
+    tx.save(update_fields=["status", "admin_note"])
+    body = (f"Your {tx.tx_type} of ${tx.amount_usd:,.2f} ({tx.asset}) was not approved: {note}" if note
+            else f"Your {tx.tx_type} of ${tx.amount_usd:,.2f} ({tx.asset}) was not approved. Please contact support.")
+    Notification.objects.create(user=tx.user, notif_type="wallet", title="Transaction Rejected", body=body)
     messages.warning(request, f"Transaction rejected for {tx.user.email}.")
     return redirect("panel:transaction_detail", pk=pk)
 

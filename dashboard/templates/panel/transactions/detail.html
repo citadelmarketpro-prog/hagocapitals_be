@@ -76,24 +76,49 @@
 
     <!-- Actions -->
     {% if obj.status == "pending" %}
+    <div class="p-4 rounded-xl mb-4" style="background:#131c2e; border:1px solid #263353;">
+      <p class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#94a3b8;">Correct request details</p>
+      <p class="text-xs mb-4" style="color:#475569;">If what the user actually sent or uploaded doesn't match what they entered, fix it here before approving.</p>
+      <form method="post" action="{% url 'panel:transaction_edit' obj.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="{{ edit_form.instance.status }}" />
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="form-label">Amount (USD / Units)</label>
+            <input type="number" name="amount_usd" class="form-control" step="0.01" min="0" required value="{{ edit_form.instance.amount_usd|stringformat:'s' }}" />
+          </div>
+          <div>
+            <label class="form-label">Asset</label>
+            <input type="text" name="asset" class="form-control" required value="{{ edit_form.instance.asset }}" />
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Wallet Address</label>
+            <input type="text" name="wallet_address" class="form-control" value="{{ edit_form.instance.wallet_address }}" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-ghost">Save Changes</button>
+      </form>
+    </div>
     <div class="p-4 rounded-xl mb-0" style="background:#131c2e; border:1px solid #263353;">
       <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:#94a3b8;">Actions</p>
-      <div class="flex gap-3">
-        <form method="post" action="{% url 'panel:transaction_approve' obj.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-success">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            Approve {% if obj.tx_type == "deposit" %}— Add ${{ obj.amount_usd|floatformat:2|intcomma }} to balance{% else %}— Deduct ${{ obj.amount_usd|floatformat:2|intcomma }} from {{ obj.withdraw_from_label|default:"balance" }}{% endif %}
-          </button>
-        </form>
-        <form method="post" action="{% url 'panel:transaction_reject' obj.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-danger">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Reject
-          </button>
-        </form>
-      </div>
+      <form method="post" action="{% url 'panel:transaction_approve' obj.pk %}" class="mb-4">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Approve {% if obj.tx_type == "deposit" %}— Add ${{ obj.amount_usd|floatformat:2|intcomma }} to balance{% else %}— Deduct ${{ obj.amount_usd|floatformat:2|intcomma }} from {{ obj.withdraw_from_label|default:"balance" }}{% endif %}
+        </button>
+      </form>
+      <form method="post" action="{% url 'panel:transaction_reject' obj.pk %}">
+        {% csrf_token %}
+        <div class="mb-2">
+          <label class="form-label">Rejection note (optional, shown to the user)</label>
+          <textarea name="note" class="form-control" rows="2" placeholder="e.g. Receipt doesn't match the amount sent"></textarea>
+        </div>
+        <button type="submit" class="btn btn-danger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Reject
+        </button>
+      </form>
     </div>
     {% elif obj.status == "completed" %}
     <div class="p-3 rounded-lg flex items-center gap-2" style="background:#1a3020; border:1px solid #263353;">
@@ -104,9 +129,14 @@
       </p>
     </div>
     {% else %}
-    <div class="p-3 rounded-lg flex items-center gap-2" style="background:#2a1010; border:1px solid #3a1515;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      <p class="text-sm font-medium" style="color:#f87171;">Transaction was rejected. No balance changes were made.</p>
+    <div class="p-3 rounded-lg" style="background:#2a1010; border:1px solid #3a1515;">
+      <div class="flex items-center gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <p class="text-sm font-medium" style="color:#f87171;">Transaction was rejected. No balance changes were made.</p>
+      </div>
+      {% if obj.admin_note %}
+        <p class="text-xs mt-2" style="color:#fca5a5;">Reason given to user: "{{ obj.admin_note }}"</p>
+      {% endif %}
     </div>
     {% endif %}
   </div>

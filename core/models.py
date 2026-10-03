@@ -72,9 +72,12 @@ class User(AbstractUser):
 
     def update_loyalty_tier(self):
         """Check total completed deposits and upgrade the loyalty tier if
-        eligible. Credits the rank-bonus difference to balance on upgrade.
-        Only ever upgrades — never downgrades. Returns True if an upgrade
-        occurred. Call this after a deposit Transaction is marked completed."""
+        eligible. Only ever upgrades — never downgrades. Returns True if an
+        upgrade occurred. Call this after a deposit Transaction is marked
+        completed.
+
+        Note: this does NOT credit any rank bonus to balance — upgrading a
+        tier is purely a status/notification change."""
         from decimal import Decimal
         from django.db.models import Sum
 
@@ -93,10 +96,6 @@ class User(AbstractUser):
         if new_index <= old_index:
             return False
 
-        old_rank_bonus = Decimal(str(self.LOYALTY_TIER_CONFIG.get(old_tier, {}).get("rank_bonus", 0)))
-        new_rank_bonus = Decimal(str(self.LOYALTY_TIER_CONFIG[new_tier]["rank_bonus"]))
-        bonus_credit = new_rank_bonus - old_rank_bonus
-
         self.current_loyalty_status = new_tier
         if new_index < len(self.LOYALTY_TIER_ORDER) - 1:
             next_tier = self.LOYALTY_TIER_ORDER[new_index + 1]
@@ -106,19 +105,13 @@ class User(AbstractUser):
             self.next_loyalty_status = new_tier
             self.next_amount_to_upgrade = Decimal("0")
 
-        if bonus_credit > 0:
-            self.balance += bonus_credit
-
-        self.save(update_fields=["current_loyalty_status", "next_loyalty_status", "next_amount_to_upgrade", "balance"])
+        self.save(update_fields=["current_loyalty_status", "next_loyalty_status", "next_amount_to_upgrade"])
 
         Notification.objects.create(
             user=self,
             notif_type="system",
             title="Loyalty Rank Upgraded!",
-            body=(
-                f"Congratulations! You have been upgraded to {new_tier.capitalize()} tier. "
-                f"Rank bonus credited: ${bonus_credit:.2f}."
-            ),
+            body=f"Congratulations! You have been upgraded to {new_tier.capitalize()} tier.",
         )
         return True
 
@@ -456,6 +449,7 @@ class Transaction(models.Model):
     withdraw_from  = models.CharField(max_length=10, blank=True, default="")  # "balance" | "roi" — set on withdrawals
     receipt        = CloudinaryField("receipt", folder="deposit_receipts", null=True, blank=True)  # deposit payment proof
     tx_id          = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    admin_note     = models.TextField(blank=True, default="")  # staff's reason when rejecting (shown to the user)
     created_at     = models.DateTimeField(auto_now_add=True)
 
     class Meta:

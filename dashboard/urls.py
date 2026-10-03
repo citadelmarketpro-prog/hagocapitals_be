@@ -35,6 +35,7 @@ urlpatterns = [
     path("requests/withdrawals/",        views.withdrawal_list,     name="withdrawal_list"),
     path("transactions/",                views.transaction_list,    name="transaction_list"),
     path("transactions/<int:pk>/",       views.transaction_detail,  name="transaction_detail"),
+    path("transactions/<int:pk>/edit/",    views.transaction_edit,    name="transaction_edit"),
     path("transactions/<int:pk>/approve/", views.transaction_approve, name="transaction_approve"),
     path("transactions/<int:pk>/reject/",  views.transaction_reject,  name="transaction_reject"),
 
