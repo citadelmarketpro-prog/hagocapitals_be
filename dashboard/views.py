@@ -354,18 +354,38 @@ def transaction_edit(request, pk):
     if tx.status != "pending":
         messages.error(request, "Only pending transactions can be edited.")
         return redirect("panel:transaction_detail", pk=pk)
+    old_amount_usd = tx.amount_usd  # captured before form validation mutates tx in place
     data = request.POST.copy()
     data["units"] = data.get("amount_usd", tx.units)  # units tracks the USD amount 1:1 on this platform
     form = TransactionEditForm(data, instance=tx)
-    if form.is_valid():
-        # Editing corrects the request (e.g. the user actually sent a different
-        # amount than they entered) — it must never itself flip the status;
-        # approve/reject are the only actions that do that.
-        form.instance.status = tx.status
-        form.save()
-        messages.success(request, "Transaction details updated.")
-    else:
+    if not form.is_valid():
         messages.error(request, "Could not save changes — please check the values entered.")
+        return redirect("panel:transaction_detail", pk=pk)
+
+    if tx.tx_type == "withdrawal":
+        # Withdrawal funds are reserved (deducted) the instant the request is
+        # made, so changing the amount here must re-reserve the difference —
+        # otherwise what's actually deducted drifts from what the transaction
+        # says, and a later approve/reject would act on the wrong figure.
+        field = "roi" if tx.withdraw_from == "roi" else "balance"
+        source_label = "Profit (ROI)" if field == "roi" else "Available Balance"
+        delta = form.cleaned_data["amount_usd"] - old_amount_usd  # +ve = needs more reserved
+        user = tx.user
+        if delta > 0:
+            available = getattr(user, field) or Decimal("0")
+            if available < delta:
+                messages.error(request, f"Can't raise the amount — {user.email} only has ${available:,.2f} left in their {source_label}.")
+                return redirect("panel:transaction_detail", pk=pk)
+        if delta != 0:
+            setattr(user, field, getattr(user, field) - delta)
+            user.save(update_fields=[field])
+
+    # Editing corrects the request (e.g. the user actually sent a different
+    # amount than they entered) — it must never itself flip the status;
+    # approve/reject are the only actions that do that.
+    form.instance.status = tx.status
+    form.save()
+    messages.success(request, "Transaction details updated.")
     return redirect("panel:transaction_detail", pk=pk)
 
 
@@ -388,20 +408,15 @@ def transaction_approve(request, pk):
         user.update_loyalty_tier()
         messages.success(request, f"Deposit approved — ${tx.amount_usd:,.2f} added to {user.email}.")
     else:
-        # Deduct from whichever pool the user actually chose at request time —
-        # "roi" (profit) or "balance" (deposited). Older transactions predating
-        # this field are blank, so default to "balance" to match prior behavior.
+        # Funds were already deducted from the user's balance/roi the moment
+        # they submitted the request (see core.views.WithdrawalView) — approving
+        # just confirms the withdrawal went out. It must NOT deduct a second time.
         source = tx.withdraw_from or "balance"
-        field  = "roi" if source == "roi" else "balance"
-        source_label = "Profit (ROI)" if field == "roi" else "Available Balance"
-
-        current = getattr(user, field)
-        setattr(user, field, max(Decimal("0"), current - tx.amount_usd))
-        user.save(update_fields=[field])
+        source_label = "Profit (ROI)" if source == "roi" else "Available Balance"
 
         Notification.objects.create(user=user, notif_type="wallet", title="Withdrawal Approved",
             body=f"Your withdrawal of ${tx.amount_usd:,.2f} ({tx.asset}) from your {source_label} has been approved and processed.")
-        messages.success(request, f"Withdrawal approved — ${tx.amount_usd:,.2f} deducted from {user.email}'s {source_label}.")
+        messages.success(request, f"Withdrawal approved — ${tx.amount_usd:,.2f} from {user.email}'s {source_label} sent.")
     return redirect("panel:transaction_detail", pk=pk)
 
 
@@ -417,10 +432,22 @@ def transaction_reject(request, pk):
     tx.status = "rejected"
     tx.admin_note = note
     tx.save(update_fields=["status", "admin_note"])
+
+    refund_note = ""
+    if tx.tx_type == "withdrawal":
+        # The funds were already deducted when the withdrawal was requested —
+        # rejecting it means it never went out, so give them back.
+        user = tx.user
+        field = "roi" if tx.withdraw_from == "roi" else "balance"
+        source_label = "Profit (ROI)" if field == "roi" else "Available Balance"
+        setattr(user, field, getattr(user, field) + tx.amount_usd)
+        user.save(update_fields=[field])
+        refund_note = f" ${tx.amount_usd:,.2f} was returned to their {source_label}."
+
     body = (f"Your {tx.tx_type} of ${tx.amount_usd:,.2f} ({tx.asset}) was not approved: {note}" if note
             else f"Your {tx.tx_type} of ${tx.amount_usd:,.2f} ({tx.asset}) was not approved. Please contact support.")
-    Notification.objects.create(user=tx.user, notif_type="wallet", title="Transaction Rejected", body=body)
-    messages.warning(request, f"Transaction rejected for {tx.user.email}.")
+    Notification.objects.create(user=tx.user, notif_type="wallet", title="Transaction Rejected", body=body + refund_note)
+    messages.warning(request, f"Transaction rejected for {tx.user.email}.{refund_note}")
     return redirect("panel:transaction_detail", pk=pk)
 
 # ── Wallets ───────────────────────────────────────────────────────────────────

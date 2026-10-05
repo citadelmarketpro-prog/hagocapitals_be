@@ -702,36 +702,45 @@ class WithdrawalView(APIView):
 
     def post(self, request):
         from decimal import Decimal
+        from django.db import transaction as db_transaction
 
         serializer = WithdrawalSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         wallet        = AdminWallet.objects.get(pk=serializer.validated_data["wallet_id"])
         amount_usd    = serializer.validated_data["amount_usd"]
-        withdraw_from = serializer.validated_data["withdraw_from"]   # "balance" | "profit"
+        withdraw_from = serializer.validated_data["withdraw_from"]   # "balance" | "roi"
         wallet_address = serializer.validated_data["wallet_address"]
+        field = withdraw_from  # choices are exactly the User field names
+        source_label = "Available Balance" if field == "balance" else "Profit (ROI)"
 
-        user = request.user
-        available = user.balance if withdraw_from == "balance" else user.roi
-        available  = available or Decimal("0")
+        # Deduct the moment the request is made (not on admin approval) and lock
+        # the row while doing it — otherwise the same funds could be withdrawn
+        # twice by firing two requests before either is approved, and a user
+        # could keep re-requesting against balance that was never actually reserved.
+        with db_transaction.atomic():
+            user = type(request.user).objects.select_for_update().get(pk=request.user.pk)
+            available = getattr(user, field) or Decimal("0")
 
-        if available < amount_usd:
-            source_label = "Available Balance" if withdraw_from == "balance" else "Profit (ROI)"
-            return Response(
-                {"detail": f"You have insufficient funds in your {source_label}."},
-                status=status.HTTP_400_BAD_REQUEST,
+            if available < amount_usd:
+                return Response(
+                    {"detail": f"You have insufficient funds in your {source_label}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            setattr(user, field, available - amount_usd)
+            user.save(update_fields=[field])
+
+            tx = Transaction.objects.create(
+                user=user,
+                tx_type="withdrawal",
+                asset=wallet.symbol,
+                units=amount_usd,
+                amount_usd=amount_usd,
+                wallet_address=wallet_address,
+                withdraw_from=withdraw_from,
+                status="pending",
             )
-
-        tx = Transaction.objects.create(
-            user=request.user,
-            tx_type="withdrawal",
-            asset=wallet.symbol,
-            units=amount_usd,
-            amount_usd=amount_usd,
-            wallet_address=wallet_address,
-            withdraw_from=withdraw_from,
-            status="pending",
-        )
 
         _payment_info = _types.SimpleNamespace(
             method_type=wallet.name,
