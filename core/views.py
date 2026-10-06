@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
+from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework import status
@@ -15,6 +16,9 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 from .authentication import CookieJWTAuthentication
 from .email_service import (
+    generate_verification_code,
+    is_code_valid,
+    send_2fa_code_email,
     send_admin_deposit_notification,
     send_admin_payment_intent_notification,
     send_admin_withdrawal_intent_notification,
@@ -145,10 +149,153 @@ class LoginView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        if user.two_factor_enabled:
+            code = generate_verification_code()
+            user.verification_code = code
+            user.code_created_at   = timezone.now()
+            user.save(update_fields=["verification_code", "code_created_at"])
+
+            if not send_2fa_code_email(user, code):
+                return Response(
+                    {"detail": "Failed to send verification code. Please try again."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            return Response(
+                {"requires_2fa": True, "email": user.email},
+                status=status.HTTP_200_OK,
+            )
+
         refresh  = RefreshToken.for_user(user)
         response = Response({"detail": "Login successful."})
         _set_auth_cookies(response, refresh)
         return response
+
+
+class Verify2FALoginView(APIView):
+    """POST /api/auth/2fa/verify/ — Body: { email, code }
+
+    Completes a login that was paused by LoginView because the account has
+    2FA enabled. Only on success are the auth cookies actually set."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip()
+        code  = (request.data.get("code") or "").strip()
+
+        if not email or not code:
+            return Response(
+                {"detail": "Email and verification code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not user.verification_code or not is_code_valid(user):
+            return Response(
+                {"detail": "Verification code has expired. Please log in again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if user.verification_code != code:
+            return Response(
+                {"detail": "Invalid verification code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.verification_code = None
+        user.code_created_at   = None
+        user.save(update_fields=["verification_code", "code_created_at"])
+
+        refresh  = RefreshToken.for_user(user)
+        response = Response({"detail": "Login successful."})
+        _set_auth_cookies(response, refresh)
+        return response
+
+
+class Resend2FACodeView(APIView):
+    """POST /api/auth/2fa/resend/ — Body: { email }
+
+    Unauthenticated (the user hasn't completed login yet at this point)."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip()
+        if not email:
+            return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not user.two_factor_enabled:
+            return Response(
+                {"detail": "2FA is not enabled for this account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if user.code_created_at and timezone.now() - user.code_created_at < timedelta(minutes=1):
+            return Response(
+                {"detail": "Please wait at least 1 minute before requesting a new code."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        code = generate_verification_code()
+        user.verification_code = code
+        user.code_created_at   = timezone.now()
+        user.save(update_fields=["verification_code", "code_created_at"])
+
+        if not send_2fa_code_email(user, code):
+            return Response(
+                {"detail": "Failed to send verification code. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response({"detail": "Verification code sent."})
+
+
+class Enable2FAView(APIView):
+    """POST /api/auth/2fa/enable/ — no password required to turn it on."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not user.two_factor_enabled:
+            user.two_factor_enabled = True
+            user.save(update_fields=["two_factor_enabled"])
+        return Response({"two_factor_enabled": True})
+
+
+class Disable2FAView(APIView):
+    """POST /api/auth/2fa/disable/ — Body: { password }
+
+    Requires the current password so a hijacked session can't silently
+    turn off the account's 2FA protection."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def post(self, request):
+        password = request.data.get("password")
+        if not password:
+            return Response(
+                {"detail": "Password is required to disable 2FA."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        if not user.check_password(password):
+            return Response({"detail": "Incorrect password."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        user.two_factor_enabled = False
+        user.verification_code  = None
+        user.code_created_at    = None
+        user.save(update_fields=["two_factor_enabled", "verification_code", "code_created_at"])
+        return Response({"two_factor_enabled": False})
 
 
 class LogoutView(APIView):

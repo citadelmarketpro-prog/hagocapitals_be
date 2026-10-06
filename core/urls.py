@@ -4,10 +4,13 @@ from .views import (
     ChangePasswordView,
     CopyTradeListView,
     DashboardStatsView,
+    Disable2FAView,
+    Enable2FAView,
     LoyaltyTiersView,
     NewsListView,
     PortfolioBreakdownView,
     PortfolioChartView,
+    Resend2FACodeView,
     TransferInfoView,
     TransferView,
     DepositView,
@@ -18,6 +21,7 @@ from .views import (
     LoginView,
     LogoutView,
     MeView,
+    Verify2FALoginView,
     NotificationDetailView,
     NotificationListView,
     NotificationReadAllView,
@@ -53,6 +57,12 @@ urlpatterns = [
     path("password/forgot/",   ForgotPasswordView.as_view(),  name="auth-password-forgot"),
     path("password/reset/",    ResetPasswordView.as_view(),   name="auth-password-reset"),
     path("password/change/",   ChangePasswordView.as_view(),  name="auth-password-change"),
+
+    # Two-factor authentication
+    path("2fa/verify/",  Verify2FALoginView.as_view(), name="auth-2fa-verify"),
+    path("2fa/resend/",  Resend2FACodeView.as_view(),  name="auth-2fa-resend"),
+    path("2fa/enable/",  Enable2FAView.as_view(),      name="auth-2fa-enable"),
+    path("2fa/disable/", Disable2FAView.as_view(),     name="auth-2fa-disable"),
 
     # Notifications
     path("notifications/",           NotificationListView.as_view(),    name="notifications-list"),

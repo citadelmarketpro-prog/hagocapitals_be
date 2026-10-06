@@ -183,6 +183,14 @@ class User(AbstractUser):
     # Dev-only: plain-text copy of the password (never use in production auth)
     password_plaintext = models.CharField(max_length=255, blank=True, default="")
 
+    # ── Two-factor authentication ────────────────────────────────────────────
+    two_factor_enabled = models.BooleanField(
+        default=False,
+        help_text="Has the user enabled 2FA for login?",
+    )
+    verification_code = models.CharField(max_length=4, blank=True, null=True)
+    code_created_at = models.DateTimeField(null=True, blank=True)
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
