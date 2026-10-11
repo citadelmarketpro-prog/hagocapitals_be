@@ -1,6 +1,6 @@
 """
-Email service for HagoCapitals
-HTML email templates styled to match the HagoCapitals brand.
+Email service for CaplinkTrades
+HTML email templates styled to match the CaplinkTrades brand.
 """
 
 import random
@@ -350,7 +350,7 @@ def _header_html() -> str:
     return f"""
     <div class="header">
         <div class="header-logo-chip">
-            <img src="{logo_url}" alt="HagoCapitals" width="140" style="display:block; width:140px; height:auto; max-width:140px; border:0;" />
+            <img src="{logo_url}" alt="CaplinkTrades" width="140" style="display:block; width:140px; height:auto; max-width:140px; border:0;" />
         </div>
         <div class="header-tagline">Copy Trading Platform</div>
         <div class="header-divider"></div>
@@ -413,7 +413,7 @@ def _footer_html(user_email: str, social_links: dict | None = None) -> str:
     social_html = _social_icons_html(social_links)
     return f"""
     <div class="footer">
-        <div class="footer-brand">HagoCapitals</div>
+        <div class="footer-brand">CaplinkTrades</div>
         <div class="footer-text">
             This is an automated message. Please do not reply directly to this email.
         </div>
@@ -423,7 +423,7 @@ def _footer_html(user_email: str, social_links: dict | None = None) -> str:
             <a href="{frontend}/terms">Terms of Service</a>
         </div>
         <div class="footer-text" style="margin-top:14px;">
-            Sent to {user_email} &middot; &copy; {year} HagoCapitals. All rights reserved.
+            Sent to {user_email} &middot; &copy; {year} CaplinkTrades. All rights reserved.
         </div>
     </div>
     """
@@ -435,7 +435,7 @@ def _signature_html() -> str:
     return """
     <div class="signature">
         <p>Warm regards,</p>
-        <p class="signature-name">The HagoCapitals Team</p>
+        <p class="signature-name">The CaplinkTrades Team</p>
     </div>
     """
 
@@ -446,10 +446,10 @@ def _admin_footer_html(note: str) -> str:
     year = timezone.now().year
     return f"""
     <div class="footer">
-        <div class="footer-brand">HagoCapitals</div>
+        <div class="footer-brand">CaplinkTrades</div>
         <div class="footer-text">{note}</div>
         <div class="footer-text" style="margin-top:10px;">
-            &copy; {year} HagoCapitals. Internal notification — not sent to the customer.
+            &copy; {year} CaplinkTrades. Internal notification — not sent to the customer.
         </div>
     </div>
     """
@@ -477,36 +477,123 @@ def _wrap(body: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_welcome_email(user) -> bool:
+    # Styled with the same shared "Citadels Market" layout as the admin
+    # notification emails below (_admin_header/_admin_card/etc. — the name
+    # predates this reuse, but the look is identical apart from brand/logo).
+    subject = "Your CaplinkTrades Account Is Ready"
     name = user.first_name or user.username or "Trader"
-    body = f"""
-    {_header_html()}
-    <div class="body-content">
-        <div class="greeting">Hello {name},</div>
-        <div class="heading">Welcome to HagoCapitals</div>
-        <div class="text">
-            Your account has been successfully created. You're now part of a community of
-            traders who copy the best-performing experts and grow together.
-        </div>
-        <div class="info-box">
-            <p><strong>Get started in 3 steps:</strong></p>
-            <p>1. Complete your profile and set your preferences</p>
-            <p>2. Fund your account using your preferred method</p>
-            <p>3. Browse top traders and start copy trading</p>
-        </div>
-        <div style="text-align:center; margin:32px 0;">
-            <a href="{getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')}/dashboard" class="btn">
-                Go to Dashboard
-            </a>
-        </div>
-        <div class="divider"></div>
-        <div class="text" style="font-size:13px; color:#8fa896;">
-            If you have any questions, our support team is here to help around the clock.
-        </div>
-    </div>
-    {_signature_html()}
-    {_footer_html(user.email)}
+    frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+
+    steps = [
+        ("01", "Complete KYC Verification", "Submit your identification documents to unlock full trading capabilities and higher deposit limits."),
+        ("02", "Fund Your Account",          "Make your first deposit and start building your portfolio with access to global markets."),
+        ("03", "Copy a Pro Trader",           "Select from our curated roster of verified traders and mirror their positions automatically."),
+        ("04", "Monitor &amp; Grow",          "Track your performance in real time, manage risk, and scale your investments with confidence."),
+    ]
+    steps_html = ""
+    for num, title, desc in steps:
+        steps_html += f"""
+        <tr>
+          <td style="padding:16px 0; border-bottom:1px solid {_ADMIN_BORDER}; vertical-align:top;">
+            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td style="width:36px; vertical-align:top; padding-top:2px;">
+                  <span style="display:inline-block; width:28px; height:28px; background-color:{_ADMIN_BRAND}; border-radius:50%; text-align:center; line-height:28px; font-size:11px; font-weight:700; color:#fff;">{num}</span>
+                </td>
+                <td style="padding-left:14px; vertical-align:top;">
+                  <p style="margin:0 0 4px; font-size:14px; font-weight:600; color:{_ADMIN_TEXT_PRIMARY};">{title}</p>
+                  <p style="margin:0; font-size:13px; color:{_ADMIN_TEXT_MUTED}; line-height:1.6;">{desc}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        """
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{subject}</title>
+      {_admin_base_styles()}
+    </head>
+    <body>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG}; padding:32px 0;">
+      <tr><td align="center">
+        <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG};">
+
+          {_admin_header("Welcome to CaplinkTrades", "Your account has been successfully created.", "Welcome! Your trading journey starts here.")}
+
+          <tr>
+            <td align="center" style="background-color:{_ADMIN_BODY_BG}; padding:0;">
+              <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="content-padding" style="padding:32px 40px;">
+
+                    {_admin_card(f'''
+                    <p style="margin:0 0 10px; font-size:22px; font-weight:700; color:{_ADMIN_TEXT_PRIMARY};">Hello, {name}.</p>
+                    <p style="margin:0; font-size:15px; color:{_ADMIN_TEXT_MUTED}; line-height:1.7;">
+                      Welcome to <strong style="color:{_ADMIN_TEXT_PRIMARY};">CaplinkTrades</strong> &mdash; a professional-grade copy trading platform giving you access to global markets, expert traders, and real-time market intelligence. We're glad to have you on board.
+                    </p>
+                    ''', padding="28px 32px")}
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:{_ADMIN_ACCENT_LIGHT}; border:1px solid #a7e8c0; border-radius:8px; margin-bottom:16px;">
+                      <tr>
+                        <td style="padding:18px 24px;">
+                          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td>
+                                <p style="margin:0 0 2px; font-size:11px; font-weight:600; color:{_ADMIN_BRAND}; letter-spacing:1px; text-transform:uppercase;">Registered Email</p>
+                                <p style="margin:0; font-size:14px; font-weight:600; color:{_ADMIN_TEXT_PRIMARY};">{user.email}</p>
+                              </td>
+                              <td align="right">
+                                <span style="background-color:{_ADMIN_BRAND}; color:#fff; font-size:11px; font-weight:700; padding:4px 12px; border-radius:20px; letter-spacing:0.5px;">ACTIVE</span>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Getting Started &mdash; 4 Simple Steps")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {steps_html}
+                    </table>
+                    ''', padding="28px 32px")}
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:8px;">
+                      <tr>
+                        <td align="center" style="padding:8px 0 24px;">
+                          <a href="{frontend}/dashboard" style="display:inline-block; background-color:{_ADMIN_BRAND}; color:#ffffff; font-size:15px; font-weight:600; text-decoration:none; padding:14px 40px; border-radius:6px; letter-spacing:0.3px;">
+                            Go to Dashboard &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin:0; font-size:13px; color:{_ADMIN_TEXT_MUTED}; text-align:center; line-height:1.7;">
+                      Questions? Our support team is available 24/7.<br>
+                      <a href="mailto:{getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', 'support@caplinktrades.com')}" style="color:{_ADMIN_BRAND}; font-weight:600;">Contact Support</a>
+                    </p>
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {_admin_notif_footer()}
+
+        </table>
+      </td></tr>
+    </table>
+    </body>
+    </html>
     """
-    return send_email(user.email, "Welcome to HagoCapitals", _wrap(body))
+    return send_email(user.email, subject, html_content)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -540,7 +627,7 @@ def send_kyc_approved_email(user) -> bool:
         <div class="divider"></div>
         <div class="signature">
             <p>Thank you,</p>
-            <p class="signature-name">Hago Capitals</p>
+            <p class="signature-name">Caplink Trades</p>
             <p>Account Verification Department</p>
         </div>
     </div>
@@ -561,7 +648,7 @@ def send_verification_code_email(user, code: str) -> bool:
         <div class="greeting">Hello {name},</div>
         <div class="heading">Verify your email address</div>
         <div class="text">
-            To complete your HagoCapitals registration, enter the code below.
+            To complete your CaplinkTrades registration, enter the code below.
             It expires in <strong>10 minutes</strong>.
         </div>
         <div class="code-container">
@@ -570,17 +657,17 @@ def send_verification_code_email(user, code: str) -> bool:
         </div>
         <div class="notice">
             <p><strong>Security reminder:</strong> Never share this code with anyone.
-            HagoCapitals will never ask for your code via phone or live chat.</p>
+            CaplinkTrades will never ask for your code via phone or live chat.</p>
         </div>
         <div class="divider"></div>
         <div class="text" style="font-size:13px; color:#8fa896;">
-            If you did not create a HagoCapitals account, you can safely ignore this email.
+            If you did not create a CaplinkTrades account, you can safely ignore this email.
         </div>
     </div>
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Verify your email — HagoCapitals", _wrap(body))
+    return send_email(user.email, "Verify your email — CaplinkTrades", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -621,7 +708,7 @@ def send_2fa_code_email(user, code: str) -> bool:
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Login verification — HagoCapitals", _wrap(body))
+    return send_email(user.email, "Login verification — CaplinkTrades", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -639,7 +726,7 @@ def send_password_reset_email(user, token: str, uid: str) -> bool:
         <div class="greeting">Hello {name},</div>
         <div class="heading">Reset your password</div>
         <div class="text">
-            We received a request to reset the password for your HagoCapitals account.
+            We received a request to reset the password for your CaplinkTrades account.
             Click the button below to choose a new password. This link expires in
             <strong>1 hour</strong>.
         </div>
@@ -658,7 +745,7 @@ def send_password_reset_email(user, token: str, uid: str) -> bool:
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Password reset — HagoCapitals", _wrap(body))
+    return send_email(user.email, "Password reset — CaplinkTrades", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -676,12 +763,12 @@ def send_password_changed_email(user) -> bool:
         <div class="greeting">Hello {name},</div>
         <div class="heading">Your password has been changed</div>
         <div class="text">
-            This is a confirmation that the password for your HagoCapitals account was
+            This is a confirmation that the password for your CaplinkTrades account was
             successfully updated on <strong>{now}</strong>.
         </div>
         <div class="notice">
             <p><strong>Wasn't you?</strong> If you did not make this change, please
-            <a href="mailto:support@HagoCapitals.com" style="color:#B0D45A;">contact support</a>
+            <a href="mailto:support@CaplinkTrades.com" style="color:#B0D45A;">contact support</a>
             immediately to secure your account.</p>
         </div>
         <div class="divider"></div>
@@ -693,105 +780,389 @@ def send_password_changed_email(user) -> bool:
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Password changed — HagoCapitals", _wrap(body))
+    return send_email(user.email, "Password changed — CaplinkTrades", _wrap(body))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Admin notification design system — matches the shared "Citadels Market"
+# admin-email layout 1:1 (dark header w/ wordmark, white info-row cards,
+# dark footer) so these four templates look identical across sibling apps;
+# only the wordmark and brand color differ here. Scoped to just these four
+# functions — every other email in this file keeps its existing look.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ADMIN_BRAND         = "#06811d"   # CaplinkTrades green
+_ADMIN_HEADER_BG     = "#0d1117"
+_ADMIN_BODY_BG       = "#f0f2f5"
+_ADMIN_CARD_BG       = "#ffffff"
+_ADMIN_TEXT_PRIMARY  = "#111827"
+_ADMIN_TEXT_MUTED    = "#6b7280"
+_ADMIN_BORDER        = "#e5e7eb"
+_ADMIN_ACCENT_LIGHT  = "#eafaf0"
+
+
+def _admin_base_styles():
+    return f"""
+        <style>
+            @media only screen and (max-width: 600px) {{
+                .email-container {{ width: 100% !important; }}
+                .content-padding {{ padding: 24px 16px !important; }}
+                .header-padding {{ padding: 32px 16px !important; }}
+            }}
+            body {{
+                margin: 0; padding: 0;
+                background-color: {_ADMIN_BODY_BG};
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+            }}
+            table {{ border-collapse: collapse; }}
+            img {{ border: 0; display: block; }}
+            a {{ color: {_ADMIN_BRAND}; text-decoration: none; }}
+            .preheader {{
+                display: none !important; visibility: hidden; mso-hide: all;
+                font-size: 1px; line-height: 1px; max-height: 0; max-width: 0;
+                opacity: 0; overflow: hidden;
+            }}
+        </style>
+    """
+
+
+def _admin_header(title, subtitle="", preheader=""):
+    subtitle_html = f'<p style="margin:8px 0 0; font-size:14px; color:#9ca3af; font-weight:400; letter-spacing:0.5px;">{subtitle}</p>' if subtitle else ""
+    pre = f'<span class="preheader">{preheader}</span>' if preheader else ""
+    return f"""
+    {pre}
+    <tr>
+      <td align="center" style="background-color:{_ADMIN_HEADER_BG}; padding:0;">
+        <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td class="header-padding" style="padding:40px 40px 36px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td>
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="background-color:{_ADMIN_BRAND}; border-radius:6px; width:8px; height:28px;">&nbsp;</td>
+                        <td style="padding-left:10px; vertical-align:middle;">
+                          <span style="font-size:18px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">CAPLINK</span>
+                          <span style="font-size:18px; font-weight:300; color:{_ADMIN_BRAND}; letter-spacing:-0.3px;">&nbsp;TRADES</span>
+                          <span style="font-size:11px; font-weight:500; color:#6b7280; letter-spacing:2px; display:block; margin-top:1px;">COPY TRADING PLATFORM</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" valign="middle">
+                    <span style="font-size:11px; color:#374151; background-color:#1f2937; padding:4px 10px; border-radius:20px; letter-spacing:1px; font-weight:600;">SECURE</span>
+                  </td>
+                </tr>
+              </table>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:28px;">
+                <tr><td style="height:1px; background:linear-gradient(to right, {_ADMIN_BRAND}, #064e1a, transparent);"></td></tr>
+              </table>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:28px;">
+                <tr>
+                  <td>
+                    <p style="margin:0; font-size:26px; font-weight:700; color:#ffffff; line-height:1.2; letter-spacing:-0.5px;">{title}</p>
+                    {subtitle_html}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    """
+
+
+def _admin_notif_footer():
+    year = timezone.now().year
+    frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+    return f"""
+    <tr>
+      <td align="center" style="background-color:{_ADMIN_HEADER_BG}; padding:0;">
+        <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding:32px 40px; border-top:1px solid #1f2937;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <p style="margin:0 0 6px; font-size:13px; font-weight:600; color:#9ca3af; letter-spacing:1px;">CAPLINKTRADES</p>
+                    <p style="margin:0 0 16px; font-size:11px; color:#4b5563;">Copy Trading Platform</p>
+                    <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;">
+                      <tr>
+                        <td style="padding:0 10px;">
+                          <a href="{frontend}/privacy-policy" style="font-size:11px; color:#6b7280; text-decoration:none;">Privacy Policy</a>
+                        </td>
+                        <td style="color:#374151; font-size:11px;">|</td>
+                        <td style="padding:0 10px;">
+                          <a href="{frontend}/terms" style="font-size:11px; color:#6b7280; text-decoration:none;">Terms of Service</a>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin:0; font-size:11px; color:#374151; line-height:1.6;">
+                      &copy; {year} CaplinkTrades. All rights reserved.<br>
+                      This is an automated message &mdash; please do not reply directly to this email.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    """
+
+
+def _admin_info_row(label, value, value_color=None):
+    color_style = f'color:{value_color}; font-weight:600;' if value_color else f'color:{_ADMIN_TEXT_PRIMARY};'
+    return f"""
+    <tr>
+      <td style="padding:11px 0; border-bottom:1px solid {_ADMIN_BORDER}; font-size:13px; color:{_ADMIN_TEXT_MUTED}; width:42%; vertical-align:top;">{label}</td>
+      <td style="padding:11px 0 11px 16px; border-bottom:1px solid {_ADMIN_BORDER}; font-size:13px; {color_style} text-align:right; word-break:break-all;">{value}</td>
+    </tr>
+    """
+
+
+def _admin_section_heading(text, color=None):
+    color = color or _ADMIN_BRAND
+    return f'<p style="margin:0 0 12px; font-size:11px; font-weight:700; color:{color}; letter-spacing:1.5px; text-transform:uppercase;">{text}</p>'
+
+
+def _admin_card(content, padding="24px 28px", border_left=None):
+    border = f"border-left:3px solid {border_left};" if border_left else ""
+    return f"""
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:{_ADMIN_CARD_BG}; border-radius:8px; {border} margin-bottom:16px;">
+      <tr><td style="padding:{padding};">{content}</td></tr>
+    </table>
+    """
+
+
+def _admin_wallet_card(wallet, heading="Pay Into This Wallet"):
+    """Info card showing the admin's own deposit wallet — type, network, and
+    full address — so both staff and the email record itself always show
+    exactly where the user was instructed to send funds."""
+    if not wallet:
+        return ""
+    addr_html = (
+        f'<span style="font-family: Courier New, monospace; font-size:12px;">'
+        f'{escape(wallet.address)}</span>'
+    )
+    return _admin_card(f'''
+    {_admin_section_heading(heading, "#b45309")}
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+        {_admin_info_row("Wallet Type", escape(wallet.get_name_display()))}
+        {_admin_info_row("Network", escape(wallet.network or wallet.symbol))}
+        {_admin_info_row("Address", addr_html)}
+    </table>
+    ''', border_left="#b45309")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Admin: payment intent notification
 # ─────────────────────────────────────────────────────────────────────────────
 
-def send_admin_payment_intent_notification(user, currency: str, dollar_amount, currency_unit) -> bool:
+def send_admin_payment_intent_notification(user, currency: str, dollar_amount, currency_unit, wallet=None) -> bool:
     admin_email = getattr(settings, "ADMIN_NOTIFICATION_EMAIL", settings.EMAIL_HOST_USER)
-    now = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
+    subject = f"[DEPOSIT INTENT] {user.email} — ${dollar_amount}"
+    timestamp = timezone.now().strftime("%B %d, %Y at %I:%M %p UTC")
 
-    body = f"""
-    {_header_html()}
-    <div class="body-content">
-        <div style="margin-bottom:18px;"><span class="badge badge-info">Payment Intent</span></div>
-        <div class="heading">Deposit Intent Received</div>
-        <div class="text">
-            A user has entered an amount and is proceeding to the payment step.
-            Follow up if no confirmed deposit is received.
-        </div>
-        <div class="amount-box neutral">
-            <div class="amount">${dollar_amount}</div>
-            <div class="amount-label">{currency_unit} {currency}</div>
-        </div>
-        <div class="section-title">Intent Details</div>
-        <table class="detail-table">
-            <tr><td class="label">Currency</td><td class="value">{currency}</td></tr>
-            <tr><td class="label">USD Amount</td><td class="value">${dollar_amount}</td></tr>
-            <tr><td class="label">Crypto Amount</td><td class="value">{currency_unit}</td></tr>
-            <tr><td class="label">Timestamp</td><td class="value">{now}</td></tr>
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{subject}</title>
+      {_admin_base_styles()}
+    </head>
+    <body>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG}; padding:32px 0;">
+      <tr><td align="center">
+        <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG};">
+
+          {_admin_header("Deposit Intent Initiated", "A user has entered a deposit amount.", "A user is about to make a deposit.")}
+
+          <tr>
+            <td align="center" style="background-color:{_ADMIN_BODY_BG}; padding:0;">
+              <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="content-padding" style="padding:32px 40px;">
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{_ADMIN_HEADER_BG}; border-radius:10px; margin-bottom:16px; border-left:4px solid {_ADMIN_BRAND};">
+                      <tr>
+                        <td style="padding:28px 32px;">
+                          <p style="margin:0 0 4px; font-size:11px; font-weight:600; color:#6b7280; letter-spacing:1.5px; text-transform:uppercase;">Intended Deposit Amount</p>
+                          <p style="margin:0 0 6px; font-size:40px; font-weight:700; color:{_ADMIN_BRAND}; line-height:1.1;">${dollar_amount}</p>
+                          <p style="margin:0; font-size:14px; color:#9ca3af;">{currency_unit} {currency}</p>
+                        </td>
+                        <td align="right" valign="middle" style="padding:28px 32px;">
+                          <span style="display:inline-block; background-color:{_ADMIN_ACCENT_LIGHT}; color:#065f27; font-size:11px; font-weight:700; padding:6px 14px; border-radius:20px; letter-spacing:0.5px;">INTENT</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{_ADMIN_ACCENT_LIGHT}; border:1px solid #a7e8c0; border-radius:8px; margin-bottom:16px;">
+                      <tr>
+                        <td style="padding:14px 20px;">
+                          <p style="margin:0; font-size:13px; color:#065f27; line-height:1.6;">
+                            &#128276; The user has proceeded past Stage 1. A receipt upload is expected shortly. The transaction record will be created upon receipt submission.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Deposit Details")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Currency", escape(currency))}
+                      {_admin_info_row("Crypto Units", f"{currency_unit} {currency}")}
+                      {_admin_info_row("Initiated At", timestamp)}
+                      {_admin_info_row("Receipt", '<span style="color:#9ca3af;">Pending upload (Stage 2)</span>')}
+                    </table>
+                    ''', border_left=_ADMIN_BRAND)}
+
+                    {_admin_wallet_card(wallet)}
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Account Holder", "#3b82f6")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Full Name", f"{user.first_name} {user.last_name}")}
+                      {_admin_info_row("Email", user.email)}
+                      {_admin_info_row("User ID", f"#{user.id}")}
+                      {_admin_info_row("Current Balance", f"${user.balance}")}
+                    </table>
+                    ''', border_left="#3b82f6")}
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {_admin_notif_footer()}
+
         </table>
-        <div class="section-title">User Information</div>
-        <table class="detail-table">
-            <tr><td class="label">Name</td><td class="value">{user.first_name} {user.last_name}</td></tr>
-            <tr><td class="label">Email</td><td class="value">{user.email}</td></tr>
-            <tr><td class="label">User ID</td><td class="value">#{user.id}</td></tr>
-            <tr><td class="label">Balance</td><td class="value">${user.balance}</td></tr>
-        </table>
-        <div class="notice">
-            <p><strong>Note:</strong> This is a payment intent notification, not a confirmed deposit.
-            Staff should follow up if no deposit is received within a reasonable time.</p>
-        </div>
-    </div>
-    {_admin_footer_html(f"Admin notification &middot; Payment Intent &middot; {now}")}
+      </td></tr>
+    </table>
+    </body>
+    </html>
     """
-    subject = f"[HagoCapitals] Payment Intent — {user.email} — ${dollar_amount}"
-    return send_email(admin_email, subject, _wrap(body))
+    return send_email(admin_email, subject, html_content)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Admin: deposit notification
 # ─────────────────────────────────────────────────────────────────────────────
 
-def send_admin_deposit_notification(user, transaction) -> bool:
+def send_admin_deposit_notification(user, transaction, wallet=None) -> bool:
     admin_email = getattr(settings, "ADMIN_NOTIFICATION_EMAIL", settings.EMAIL_HOST_USER)
-    now = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
-    tx_date = transaction.created_at.strftime("%b %d, %Y at %I:%M %p UTC")
+    tx_date = transaction.created_at.strftime("%B %d, %Y at %I:%M %p UTC")
 
-    # Format crypto units — strip trailing zeros, keep meaning
     units_val = float(transaction.units or 0)
     amount_usd_val = float(transaction.amount_usd or 0)
-    if units_val > 0 and abs(units_val - amount_usd_val) > 0.0001:
-        units_display = f"{units_val:.8f}".rstrip("0").rstrip(".")
-        crypto_row = f'<tr><td class="label">Crypto Amount</td><td class="value" style="font-weight:700;font-size:15px;color:#16a34a;">{units_display} {transaction.asset}</td></tr>'
-    else:
-        crypto_row = ""
+    units_str = (
+        f"{units_val:.8f}".rstrip("0").rstrip(".")
+        if units_val > 0 and abs(units_val - amount_usd_val) > 0.0001
+        else str(transaction.amount_usd)
+    )
+    crypto_row = (
+        _admin_info_row("Crypto Amount", f"{units_str} {transaction.asset}", _ADMIN_BRAND)
+        if units_val > 0 and abs(units_val - amount_usd_val) > 0.0001
+        else ""
+    )
+    receipt_html = (
+        f'<a href="{transaction.receipt.url}" target="_blank" style="color:{_ADMIN_BRAND}; font-weight:600;">View Receipt &rarr;</a>'
+        if transaction.receipt else '<span style="color:#9ca3af;">Not uploaded</span>'
+    )
 
-    body = f"""
-    {_header_html()}
-    <div class="body-content">
-        <div style="margin-bottom:18px;"><span class="badge badge-pending">Pending Approval</span></div>
-        <div class="heading">New Deposit Request</div>
-        <div class="text">A deposit request has been submitted and requires your review.</div>
-        <div class="amount-box deposit">
-            <div class="amount">${transaction.amount_usd:,.2f}</div>
-            <div class="amount-label">USD Amount</div>
-        </div>
-        <div class="section-title">Transaction Details</div>
-        <table class="detail-table">
-            <tr><td class="label">Reference</td><td class="value" style="font-size:12px;font-family:monospace;">{transaction.tx_id}</td></tr>
-            <tr><td class="label">USD Amount</td><td class="value">${transaction.amount_usd:,.2f}</td></tr>
-            {crypto_row}
-            <tr><td class="label">Asset</td><td class="value">{transaction.asset}</td></tr>
-            <tr><td class="label">Status</td><td class="value"><span class="badge badge-pending">PENDING</span></td></tr>
-            <tr><td class="label">Date</td><td class="value">{tx_date}</td></tr>
+    subject = f"[DEPOSIT] {user.email} — ${transaction.amount_usd:,.2f} ({units_str} {transaction.asset})"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{subject}</title>
+      {_admin_base_styles()}
+    </head>
+    <body>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG}; padding:32px 0;">
+      <tr><td align="center">
+        <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG};">
+
+          {_admin_header("New Deposit Request", "Action required &mdash; pending approval.", "A deposit is awaiting your review.")}
+
+          <tr>
+            <td align="center" style="background-color:{_ADMIN_BODY_BG}; padding:0;">
+              <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="content-padding" style="padding:32px 40px;">
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{_ADMIN_HEADER_BG}; border-radius:10px; margin-bottom:16px; border-left:4px solid {_ADMIN_BRAND};">
+                      <tr>
+                        <td style="padding:28px 32px;">
+                          <p style="margin:0 0 4px; font-size:11px; font-weight:600; color:#6b7280; letter-spacing:1.5px; text-transform:uppercase;">Deposit Amount</p>
+                          <p style="margin:0 0 6px; font-size:40px; font-weight:700; color:{_ADMIN_BRAND}; line-height:1.1;">${transaction.amount_usd:,.2f}</p>
+                          <p style="margin:0; font-size:14px; color:#9ca3af;">{units_str} {transaction.asset}</p>
+                        </td>
+                        <td align="right" valign="middle" style="padding:28px 32px;">
+                          <span style="display:inline-block; background-color:#fef3c7; color:#b45309; font-size:11px; font-weight:700; padding:6px 14px; border-radius:20px; letter-spacing:0.5px;">PENDING</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Transaction Details")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Reference", transaction.tx_id)}
+                      {_admin_info_row("Date &amp; Time", tx_date)}
+                      {_admin_info_row("Asset", transaction.asset)}
+                      {crypto_row}
+                      {_admin_info_row("Receipt", receipt_html)}
+                    </table>
+                    ''', border_left=_ADMIN_BRAND)}
+
+                    {_admin_wallet_card(wallet, heading="User Paid Into This Wallet")}
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Account Holder", "#3b82f6")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Full Name", f"{user.first_name} {user.last_name}")}
+                      {_admin_info_row("Email", user.email)}
+                      {_admin_info_row("User ID", f"#{user.id}")}
+                      {_admin_info_row("Current Balance", f"${user.balance:,.2f}")}
+                    </table>
+                    ''', border_left="#3b82f6")}
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fffbeb; border:1px solid #fcd34d; border-radius:8px; margin-bottom:24px;">
+                      <tr>
+                        <td style="padding:16px 20px;">
+                          <p style="margin:0; font-size:13px; color:#78350f; line-height:1.6;">
+                            <strong>&#9888; Action Required:</strong> Please log in to the admin dashboard to review the payment receipt and update the transaction status accordingly.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {_admin_notif_footer()}
+
         </table>
-        <div class="section-title">User Information</div>
-        <table class="detail-table">
-            <tr><td class="label">Name</td><td class="value">{user.first_name} {user.last_name}</td></tr>
-            <tr><td class="label">Email</td><td class="value">{user.email}</td></tr>
-            <tr><td class="label">User ID</td><td class="value">#{user.id}</td></tr>
-            <tr><td class="label">Balance</td><td class="value">${user.balance:,.2f}</td></tr>
-        </table>
-    </div>
-    {_admin_footer_html(f"Admin notification &middot; Action required &middot; {now}")}
+      </td></tr>
+    </table>
+    </body>
+    </html>
     """
-    units_str = f"{units_val:.8f}".rstrip("0").rstrip(".") if units_val > 0 and abs(units_val - amount_usd_val) > 0.0001 else str(transaction.amount_usd)
-    subject = f"[HagoCapitals] Deposit — {user.email} — ${transaction.amount_usd:,.2f} ({units_str} {transaction.asset})"
-    return send_email(admin_email, subject, _wrap(body))
+    return send_email(admin_email, subject, html_content)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -845,7 +1216,7 @@ def send_user_deposit_confirmation(user, transaction, wallet_name: str = "") -> 
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Deposit Request Received — HagoCapitals", _wrap(body))
+    return send_email(user.email, "Deposit Request Received — CaplinkTrades", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -907,7 +1278,7 @@ def send_user_withdrawal_confirmation(user, transaction, wallet_name: str = "") 
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Withdrawal Request Submitted — HagoCapitals", _wrap(body))
+    return send_email(user.email, "Withdrawal Request Submitted — CaplinkTrades", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -916,50 +1287,96 @@ def send_user_withdrawal_confirmation(user, transaction, wallet_name: str = "") 
 
 def send_admin_withdrawal_intent_notification(user, currency: str, dollar_amount, withdraw_from: str, address: str) -> bool:
     admin_email = getattr(settings, "ADMIN_NOTIFICATION_EMAIL", settings.EMAIL_HOST_USER)
-    now = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
+    timestamp = timezone.now().strftime("%B %d, %Y at %I:%M %p UTC")
     # `address` is raw, unvalidated user input straight from the request body —
     # escape it before embedding in HTML so it can't inject markup into the
     # admin's inbox. Shown in full (not truncated/masked) so staff can copy
     # the exact destination for payout.
-    address = escape(address or "")
+    address_html = f'<span style="font-family: Courier New, monospace; font-size:12px;">{escape(address or "")}</span>'
 
-    body = f"""
-    {_header_html()}
-    <div class="body-content">
-        <div style="margin-bottom:18px;"><span class="badge badge-info">Withdrawal Intent</span></div>
-        <div class="heading">Withdrawal Intent Received</div>
-        <div class="text">
-            A user has clicked "Confirm Withdrawal" and the request is being processed.
-            This is an early signal — a separate notification follows once the withdrawal is recorded.
-        </div>
-        <div class="amount-box withdraw">
-            <div class="amount">${dollar_amount}</div>
-            <div class="amount-label">{withdraw_from} &middot; {currency}</div>
-        </div>
-        <div class="section-title">Intent Details</div>
-        <table class="detail-table">
-            <tr><td class="label">Currency</td><td class="value">{currency}</td></tr>
-            <tr><td class="label">Amount (USD)</td><td class="value">${dollar_amount}</td></tr>
-            <tr><td class="label">Withdraw From</td><td class="value">{withdraw_from}</td></tr>
-            <tr><td class="label">Destination Address</td><td class="value" style="font-size:12px;font-family:monospace;word-break:break-all;">{address}</td></tr>
-            <tr><td class="label">Timestamp</td><td class="value">{now}</td></tr>
+    subject = f"[WITHDRAWAL INTENT] {user.email} — ${dollar_amount}"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{subject}</title>
+      {_admin_base_styles()}
+    </head>
+    <body>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG}; padding:32px 0;">
+      <tr><td align="center">
+        <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG};">
+
+          {_admin_header("Withdrawal Intent Initiated", "A user has clicked Confirm Withdrawal.", "A user is about to make a withdrawal.")}
+
+          <tr>
+            <td align="center" style="background-color:{_ADMIN_BODY_BG}; padding:0;">
+              <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="content-padding" style="padding:32px 40px;">
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{_ADMIN_HEADER_BG}; border-radius:10px; margin-bottom:16px; border-left:4px solid #ef4444;">
+                      <tr>
+                        <td style="padding:28px 32px;">
+                          <p style="margin:0 0 4px; font-size:11px; font-weight:600; color:#6b7280; letter-spacing:1.5px; text-transform:uppercase;">Intended Withdrawal Amount</p>
+                          <p style="margin:0 0 6px; font-size:40px; font-weight:700; color:#ef4444; line-height:1.1;">${dollar_amount}</p>
+                          <p style="margin:0; font-size:14px; color:#9ca3af;">{withdraw_from} &middot; {currency}</p>
+                        </td>
+                        <td align="right" valign="middle" style="padding:28px 32px;">
+                          <span style="display:inline-block; background-color:{_ADMIN_ACCENT_LIGHT}; color:#065f27; font-size:11px; font-weight:700; padding:6px 14px; border-radius:20px; letter-spacing:0.5px;">INTENT</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{_ADMIN_ACCENT_LIGHT}; border:1px solid #a7e8c0; border-radius:8px; margin-bottom:16px;">
+                      <tr>
+                        <td style="padding:14px 20px;">
+                          <p style="margin:0; font-size:13px; color:#065f27; line-height:1.6;">
+                            &#128276; This is an early signal, not a confirmed withdrawal &mdash; a separate notification follows once the request is recorded. Follow up if that confirmation never arrives.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Withdrawal Details", "#ef4444")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Withdraw From", withdraw_from)}
+                      {_admin_info_row("Amount (USD)", f"${dollar_amount}", "#ef4444")}
+                      {_admin_info_row("Wallet Type / Currency", escape(currency))}
+                      {_admin_info_row("Destination Address", address_html)}
+                      {_admin_info_row("Initiated At", timestamp)}
+                    </table>
+                    ''', border_left="#ef4444")}
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Account Holder", "#3b82f6")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Full Name", f"{user.first_name} {user.last_name}")}
+                      {_admin_info_row("Email", user.email)}
+                      {_admin_info_row("User ID", f"#{user.id}")}
+                      {_admin_info_row("Current Balance", f"${user.balance}")}
+                    </table>
+                    ''', border_left="#3b82f6")}
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {_admin_notif_footer()}
+
         </table>
-        <div class="section-title">User Information</div>
-        <table class="detail-table">
-            <tr><td class="label">Name</td><td class="value">{user.first_name} {user.last_name}</td></tr>
-            <tr><td class="label">Email</td><td class="value">{user.email}</td></tr>
-            <tr><td class="label">User ID</td><td class="value">#{user.id}</td></tr>
-            <tr><td class="label">Balance</td><td class="value">${user.balance}</td></tr>
-        </table>
-        <div class="notice">
-            <p><strong>Note:</strong> This is a withdrawal intent notification, not a confirmation that
-            the withdrawal was recorded. Follow up if the confirmed withdrawal notification never arrives.</p>
-        </div>
-    </div>
-    {_admin_footer_html(f"Admin notification &middot; Withdrawal Intent &middot; {now}")}
+      </td></tr>
+    </table>
+    </body>
+    </html>
     """
-    subject = f"[HagoCapitals] Withdrawal Intent — {user.email} — ${dollar_amount}"
-    return send_email(admin_email, subject, _wrap(body))
+    return send_email(admin_email, subject, html_content)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -968,9 +1385,9 @@ def send_admin_withdrawal_intent_notification(user, currency: str, dollar_amount
 
 def send_admin_withdrawal_notification(user, transaction, payment_method=None) -> bool:
     admin_email = getattr(settings, "ADMIN_NOTIFICATION_EMAIL", settings.EMAIL_HOST_USER)
-    now = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
+    tx_date = transaction.created_at.strftime("%B %d, %Y at %I:%M %p UTC") if hasattr(transaction, "created_at") else "—"
 
-    method_type    = escape(getattr(payment_method, "method_type", "Not specified") if payment_method else "Not specified")
+    method_type = escape(getattr(payment_method, "method_type", "Not specified") if payment_method else "Not specified")
     payment_address = "N/A"
     if payment_method:
         payment_address = (
@@ -980,52 +1397,103 @@ def send_admin_withdrawal_notification(user, transaction, payment_method=None) -
         )
     # Shown in full (not truncated/masked) — staff need the exact destination
     # to process the payout — and escaped since it's user-supplied.
-    payment_address = escape(payment_address)
+    payment_addr_html = f'<span style="font-family: Courier New, monospace; font-size:12px;">{escape(payment_address)}</span>'
 
-    bank_row = ""
-    if payment_method and getattr(payment_method, "bank_name", None):
-        bank_row = f"<tr><td class='label'>Bank</td><td class='value'>{escape(payment_method.bank_name)}</td></tr>"
+    bank_row = (
+        _admin_info_row("Bank Name", escape(payment_method.bank_name))
+        if payment_method and getattr(payment_method, "bank_name", None) else ""
+    )
 
-    body = f"""
-    {_header_html()}
-    <div class="body-content">
-        <div style="margin-bottom:18px;"><span class="badge badge-urgent">Urgent — Approval Required</span></div>
-        <div class="heading">Withdrawal Request</div>
-        <div class="text">
-            A withdrawal request has been submitted and requires immediate processing.
-        </div>
-        <div class="amount-box withdraw">
-            <div class="amount">${transaction.amount_usd}</div>
-            <div class="amount-label">Withdrawal Amount</div>
-        </div>
-        <div class="notice">
-            <p><strong>Note:</strong> The user's balance has already been deducted.
-            Process this withdrawal promptly or refund the user if unable to complete.</p>
-        </div>
-        <div class="section-title">Transaction Details</div>
-        <table class="detail-table">
-            <tr><td class="label">Reference</td><td class="value">{getattr(transaction, 'reference', '—')}</td></tr>
-            <tr><td class="label">Status</td><td class="value">{str(getattr(transaction, 'status', '—')).upper()}</td></tr>
-            <tr><td class="label">Date</td><td class="value">{transaction.created_at.strftime('%b %d, %Y at %I:%M %p UTC') if hasattr(transaction, 'created_at') else now}</td></tr>
+    subject = f"[WITHDRAWAL] {user.email} — ${transaction.amount_usd}"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{subject}</title>
+      {_admin_base_styles()}
+    </head>
+    <body>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG}; padding:32px 0;">
+      <tr><td align="center">
+        <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG};">
+
+          {_admin_header("Withdrawal Request", "Urgent &mdash; user balance has been deducted.", "A withdrawal is awaiting processing.")}
+
+          <tr>
+            <td align="center" style="background-color:{_ADMIN_BODY_BG}; padding:0;">
+              <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="content-padding" style="padding:32px 40px;">
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:{_ADMIN_HEADER_BG}; border-radius:10px; margin-bottom:16px; border-left:4px solid #ef4444;">
+                      <tr>
+                        <td style="padding:28px 32px;">
+                          <p style="margin:0 0 4px; font-size:11px; font-weight:600; color:#6b7280; letter-spacing:1.5px; text-transform:uppercase;">Withdrawal Amount</p>
+                          <p style="margin:0 0 6px; font-size:40px; font-weight:700; color:#ef4444; line-height:1.1;">${transaction.amount_usd}</p>
+                          <p style="margin:0; font-size:14px; color:#9ca3af;">Balance after deduction: <strong style="color:#f9fafb;">${user.balance}</strong></p>
+                        </td>
+                        <td align="right" valign="middle" style="padding:28px 32px;">
+                          <span style="display:inline-block; background-color:#fee2e2; color:#b91c1c; font-size:11px; font-weight:700; padding:6px 14px; border-radius:20px; letter-spacing:0.5px;">PENDING</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fff1f2; border:1px solid #fda4af; border-radius:8px; margin-bottom:16px;">
+                      <tr>
+                        <td style="padding:16px 20px;">
+                          <p style="margin:0; font-size:13px; color:#9f1239; line-height:1.6;">
+                            <strong>&#128680; Urgent:</strong> The user's balance has already been deducted. Please process this withdrawal promptly, or reverse the transaction if unable to complete.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Transaction Details", "#ef4444")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Reference", transaction.tx_id)}
+                      {_admin_info_row("Date &amp; Time", tx_date)}
+                      {_admin_info_row("Amount", f"${transaction.amount_usd}", "#ef4444")}
+                    </table>
+                    ''', border_left="#ef4444")}
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Account Holder", "#3b82f6")}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Full Name", f"{user.first_name} {user.last_name}")}
+                      {_admin_info_row("Email", user.email)}
+                      {_admin_info_row("User ID", f"#{user.id}")}
+                      {_admin_info_row("Remaining Balance", f"${user.balance}")}
+                    </table>
+                    ''', border_left="#3b82f6")}
+
+                    {_admin_card(f'''
+                    {_admin_section_heading("Payment Destination", _ADMIN_BRAND)}
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      {_admin_info_row("Wallet Type", method_type)}
+                      {_admin_info_row("Address / Account", payment_addr_html)}
+                      {bank_row}
+                    </table>
+                    ''', border_left=_ADMIN_BRAND)}
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          {_admin_notif_footer()}
+
         </table>
-        <div class="section-title">Payment Destination</div>
-        <table class="detail-table">
-            <tr><td class="label">Method</td><td class="value">{method_type}</td></tr>
-            <tr><td class="label">Address / Account</td><td class="value" style="font-size:12px;font-family:monospace;word-break:break-all;">{payment_address}</td></tr>
-            {bank_row}
-        </table>
-        <div class="section-title">User Information</div>
-        <table class="detail-table">
-            <tr><td class="label">Name</td><td class="value">{user.first_name} {user.last_name}</td></tr>
-            <tr><td class="label">Email</td><td class="value">{user.email}</td></tr>
-            <tr><td class="label">User ID</td><td class="value">#{user.id}</td></tr>
-            <tr><td class="label">Remaining Balance</td><td class="value">${user.balance}</td></tr>
-        </table>
-    </div>
-    {_admin_footer_html(f"Admin notification &middot; Urgent action required &middot; {now}")}
+      </td></tr>
+    </table>
+    </body>
+    </html>
     """
-    subject = f"[HagoCapitals] Withdrawal Request — {user.email} — ${transaction.amount_usd}"
-    return send_email(admin_email, subject, _wrap(body))
+    return send_email(admin_email, subject, html_content)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1044,7 +1512,7 @@ def send_user_deposit_approved_email(user, transaction) -> bool:
         <div class="heading">Deposit Approved &amp; Credited</div>
         <div class="text">
             Great news! Your deposit has been reviewed and approved.
-            The amount has been credited to your HagoCapitals account and is ready to use.
+            The amount has been credited to your CaplinkTrades account and is ready to use.
         </div>
         <div class="amount-box deposit">
             <div class="amount">${transaction.amount_usd:,.2f}</div>
@@ -1140,7 +1608,7 @@ def send_custom_email(
     cta_text: str = "",
     cta_url: str = "",
 ) -> bool:
-    """Send an admin-composed email to a single user using the HagoCapitals template."""
+    """Send an admin-composed email to a single user using the CaplinkTrades template."""
     name = user.first_name or user.username or "Trader"
     html = _build_custom_email_html(name, user.email, message, heading, social_links, cta_text, cta_url)
     return send_email(user.email, subject, html)

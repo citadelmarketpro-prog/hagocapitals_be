@@ -1,5 +1,5 @@
 {% extends "panel/base.html" %}
-{% block title %}{{ obj.name }} — HagoCapitals Admin{% endblock %}
+{% block title %}{{ obj.name }} — CaplinkTrades Admin{% endblock %}
 {% block heading %}Signal Detail{% endblock %}
 {% block breadcrumb %}<a href="{% url 'panel:signal_list' %}" style="color:#6366f1;">Signals</a> / {{ obj.name }}{% endblock %}
 {% block header_actions %}<a href="{% url 'panel:signal_edit' obj.pk %}" class="btn btn-ghost text-xs">Edit</a>{% endblock %}

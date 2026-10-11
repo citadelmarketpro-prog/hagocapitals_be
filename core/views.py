@@ -751,7 +751,7 @@ class DepositView(APIView):
             status="pending",
         )
 
-        send_admin_deposit_notification(request.user, tx)
+        send_admin_deposit_notification(request.user, tx, wallet=wallet)
         Notification.objects.create(
             user=request.user,
             notif_type="wallet",
@@ -798,7 +798,7 @@ class DepositIntentView(APIView):
 
         units_str = f"{units:.8f}".rstrip("0").rstrip(".") or "0"
 
-        send_admin_payment_intent_notification(request.user, wallet.symbol, amount_usd, units_str)
+        send_admin_payment_intent_notification(request.user, wallet.symbol, amount_usd, units_str, wallet=wallet)
         return Response({"detail": "ok"})
 
 
@@ -834,7 +834,13 @@ class WithdrawalIntentView(APIView):
         source_label  = "Available Balance" if withdraw_from == "balance" else "Profit (ROI)"
         wallet_address = request.data.get("wallet_address", "") or "N/A"
 
-        send_admin_withdrawal_intent_notification(request.user, wallet.symbol, amount_usd, source_label, wallet_address)
+        send_admin_withdrawal_intent_notification(
+            request.user,
+            f"{wallet.get_name_display()} ({wallet.network or wallet.symbol})",
+            amount_usd,
+            source_label,
+            wallet_address,
+        )
         return Response({"detail": "ok"})
 
 
@@ -890,7 +896,7 @@ class WithdrawalView(APIView):
             )
 
         _payment_info = _types.SimpleNamespace(
-            method_type=wallet.name,
+            method_type=f"{wallet.get_name_display()} ({wallet.network or wallet.symbol})",
             address=wallet_address,
             bank_account_number=None,
             bank_name=None,

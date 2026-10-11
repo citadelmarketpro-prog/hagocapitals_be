@@ -1,6 +1,6 @@
 {% extends "panel/base.html" %}
 {% load humanize %}
-{% block title %}Transaction {{ obj.tx_id }} — HagoCapitals Admin{% endblock %}
+{% block title %}Transaction {{ obj.tx_id }} — CaplinkTrades Admin{% endblock %}
 {% block heading %}Transaction Detail{% endblock %}
 {% block breadcrumb %}<a href="{% if obj.tx_type == 'deposit' %}{% url 'panel:deposit_list' %}{% else %}{% url 'panel:withdrawal_list' %}{% endif %}" style="color:#6366f1;">{% if obj.tx_type == 'deposit' %}Deposits{% else %}Withdrawals{% endif %}</a> / {{ obj.tx_id|truncatechars:16 }}…{% endblock %}
 

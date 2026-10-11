@@ -1,5 +1,5 @@
 {% extends "panel/base.html" %}
-{% block title %}{{ action }} Trader — HagoCapitals Admin{% endblock %}
+{% block title %}{{ action }} Trader — CaplinkTrades Admin{% endblock %}
 {% block heading %}{{ action }} Trader{% endblock %}
 {% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#6366f1;">Traders</a> / {% if obj %}<a href="{% url 'panel:trader_detail' obj.pk %}" style="color:#6366f1;">{{ obj.name }}</a> / {% endif %}{{ action }}{% endblock %}
 
@@ -150,8 +150,15 @@
 
       <h3 class="text-xs font-semibold uppercase tracking-widest mb-3 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Tags</h3>
       <div class="mb-6">
-        <textarea id="id_tags" name="tags" class="form-control" rows="2" placeholder='["Trending Investors", "Rising Stars"]'>{{ form.tags.value|default:'[]' }}</textarea>
-        <p class="text-xs mt-1" style="color:#94a3b8;">JSON array of tag strings, e.g. ["Trending Investors", "Rising Stars"].</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2 p-3 rounded" style="border:1px solid #263353; max-height:260px; overflow-y:auto;">
+          {% for val, label in form.fields.tags.choices %}
+            <label class="flex items-center gap-2 text-sm cursor-pointer" style="color:#cbd5e1;">
+              <input type="checkbox" name="tags" value="{{ val }}" {% if val in form.tags.value|default:'' %}checked{% endif %} style="accent-color:#6366f1; width:15px; height:15px; flex-shrink:0;" />
+              <span>{{ label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <p class="text-xs mt-1" style="color:#94a3b8;">Select every badge that applies to this trader.</p>
       </div>
 
       <h3 class="text-xs font-semibold uppercase tracking-widest mb-1 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Additional Trading Data (JSON)</h3>

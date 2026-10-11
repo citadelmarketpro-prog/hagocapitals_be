@@ -128,7 +128,40 @@ class RejectKycForm(forms.Form):
 # Trader
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Selectable trader badge tags — a closed set so staff pick from the list
+# instead of hand-typing a JSON array. The first 18 are every tag already in
+# use across existing traders (verbatim, including their original casing —
+# changing a string here would silently unselect it for any trader that
+# already has it, since the checkbox state is matched by exact value); the
+# rest extend the library with the same style of badge.
+TRADER_TAG_CHOICES = [(t, t) for t in [
+    # Already in use (kept verbatim so existing traders stay checked)
+    "Algo Driven", "Best Trader", "Elite Performer", "Investor",
+    "Leading star", "Long Track Record", "Options Flow", "Options Master",
+    "Options Specialist", "Rising Stars", "Stocks Specialist",
+    "Top Performers", "Top Traders", "Trader", "Trader of the week",
+    "Trending", "Trending Investors", "Valuable Traders",
+    # New additions
+    "Verified Trader", "Most Copied", "Editor's Pick", "Consistent Performer",
+    "Low Risk", "Medium Risk", "High Risk", "Conservative",
+    "Aggressive Growth", "Momentum Trader", "Swing Trader", "Day Trader",
+    "Scalper", "Crypto Specialist", "Forex Specialist", "Futures Trader",
+    "Dividend Investor", "Value Investor", "Growth Investor",
+    "Blue Chip Focus", "Technical Analyst", "Fundamental Analyst",
+    "New Trader", "Veteran Trader", "Steady Growth", "High Yield",
+    "Diversified Portfolio", "Short-Term Trader", "Long-Term Investor",
+    "Community Favorite",
+]]
+
+
 class TraderForm(forms.ModelForm):
+    tags = forms.MultipleChoiceField(
+        choices=TRADER_TAG_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Select every badge that applies — no manual typing.",
+    )
+
     class Meta:
         model = Trader
         fields = [
@@ -148,7 +181,6 @@ class TraderForm(forms.ModelForm):
         ]
         widgets = {
             "bio":  forms.Textarea(attrs={"rows": 3}),
-            "tags": forms.Textarea(attrs={"rows": 2, "placeholder": '["Trending Investors", "Rising Stars"]'}),
             "portfolio_breakdown": forms.Textarea(attrs={"rows": 3, "placeholder": '[{"name": "ETF", "percentage": 25}, {"name": "Crypto", "percentage": 75}]'}),
             "top_traded": forms.Textarea(attrs={"rows": 3, "placeholder": '[{"name": "Apple Inc", "ticker": "AAPL", "avg_profit": 12.5, "avg_loss": -3.2, "profitable_pct": 78}]'}),
             "performance_data": forms.Textarea(attrs={"rows": 2, "placeholder": '[{"month": "Jan", "value": 10000}]'}),
@@ -160,9 +192,10 @@ class TraderForm(forms.ModelForm):
     # leave them empty (seed_trader_demo_data fills them in afterwards). An
     # empty textarea makes Django's JSONField form field produce None instead
     # of the model's [] default — coerce it back here so it never hits the
-    # NOT NULL JSON column as a literal null.
+    # NOT NULL JSON column as a literal null. (tags is a MultipleChoiceField
+    # now, which already always returns a list, so it no longer needs this.)
     _JSON_LIST_FIELDS = (
-        "tags", "portfolio_breakdown", "top_traded",
+        "portfolio_breakdown", "top_traded",
         "performance_data", "monthly_performance", "frequently_traded",
     )
 
@@ -351,7 +384,7 @@ _FC = "form-control"
 class FmpComboboxWidget(forms.Widget):
     """
     FMP-powered live asset search combobox for the admin panel.
-    Uses HagoCapitals's dark green theme. Shows logo + symbol + name.
+    Uses CaplinkTrades's dark green theme. Shows logo + symbol + name.
     """
 
     def render(self, name, value, attrs=None, renderer=None):
