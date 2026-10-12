@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,11 +19,7 @@
 
     <!-- Logo -->
     <div class="flex flex-col items-center mb-8">
-      <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style="background:#6366f1;">
-        <svg width="28" height="28" viewBox="0 0 16 16" fill="none">
-          <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" fill="#ffffff"/>
-        </svg>
-      </div>
+      <img src="{% static 'images/logo_icon.png' %}" alt="CaplinkTrades" class="mb-4" style="height:56px; width:auto; object-fit:contain;" />
       <h1 class="text-2xl font-bold" style="color:#f8fafc;">CaplinkTrades Admin</h1>
       <p class="text-sm mt-1" style="color:#94a3b8;">Superuser access only</p>
     </div>

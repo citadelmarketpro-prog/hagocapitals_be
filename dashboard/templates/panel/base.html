@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -135,18 +136,9 @@
 <!-- Sidebar -->
 <aside id="sidebar">
   <!-- Logo -->
-  <div style="padding:24px 20px 20px; border-bottom:1px solid #263353; flex-shrink:0;">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <div style="width:32px; height:32px; border-radius:8px; background:#6366f1; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" fill="#ffffff"/>
-        </svg>
-      </div>
-      <div>
-        <div style="font-size:14px; font-weight:700; color:#f8fafc;">CaplinkTrades</div>
-        <div style="font-size:11px; color:#94a3b8;">Admin Panel</div>
-      </div>
-    </div>
+  <div style="padding:20px 20px 20px; border-bottom:1px solid #263353; flex-shrink:0;">
+    <img src="{% static 'images/logo_wordmark.png' %}" alt="CaplinkTrades" style="height:26px; width:auto; object-fit:contain; display:block;" />
+    <div style="font-size:11px; color:#94a3b8; margin-top:8px;">Admin Panel</div>
   </div>
 
   <!-- Nav -->
