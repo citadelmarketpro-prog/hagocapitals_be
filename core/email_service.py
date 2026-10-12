@@ -1,6 +1,6 @@
 """
-Email service for CaplinkTrades
-HTML email templates styled to match the CaplinkTrades brand.
+Email service for HagoCapitals
+HTML email templates styled to match the HagoCapitals brand.
 """
 
 import random
@@ -350,7 +350,7 @@ def _header_html() -> str:
     return f"""
     <div class="header">
         <div class="header-logo-chip">
-            <img src="{logo_url}" alt="CaplinkTrades" width="140" style="display:block; width:140px; height:auto; max-width:140px; border:0;" />
+            <img src="{logo_url}" alt="HagoCapitals" width="140" style="display:block; width:140px; height:auto; max-width:140px; border:0;" />
         </div>
         <div class="header-tagline">Copy Trading Platform</div>
         <div class="header-divider"></div>
@@ -413,7 +413,7 @@ def _footer_html(user_email: str, social_links: dict | None = None) -> str:
     social_html = _social_icons_html(social_links)
     return f"""
     <div class="footer">
-        <div class="footer-brand">CaplinkTrades</div>
+        <div class="footer-brand">HagoCapitals</div>
         <div class="footer-text">
             This is an automated message. Please do not reply directly to this email.
         </div>
@@ -423,7 +423,7 @@ def _footer_html(user_email: str, social_links: dict | None = None) -> str:
             <a href="{frontend}/terms">Terms of Service</a>
         </div>
         <div class="footer-text" style="margin-top:14px;">
-            Sent to {user_email} &middot; &copy; {year} CaplinkTrades. All rights reserved.
+            Sent to {user_email} &middot; &copy; {year} HagoCapitals. All rights reserved.
         </div>
     </div>
     """
@@ -435,7 +435,7 @@ def _signature_html() -> str:
     return """
     <div class="signature">
         <p>Warm regards,</p>
-        <p class="signature-name">The CaplinkTrades Team</p>
+        <p class="signature-name">The HagoCapitals Team</p>
     </div>
     """
 
@@ -446,10 +446,10 @@ def _admin_footer_html(note: str) -> str:
     year = timezone.now().year
     return f"""
     <div class="footer">
-        <div class="footer-brand">CaplinkTrades</div>
+        <div class="footer-brand">HagoCapitals</div>
         <div class="footer-text">{note}</div>
         <div class="footer-text" style="margin-top:10px;">
-            &copy; {year} CaplinkTrades. Internal notification — not sent to the customer.
+            &copy; {year} HagoCapitals. Internal notification — not sent to the customer.
         </div>
     </div>
     """
@@ -480,7 +480,7 @@ def send_welcome_email(user) -> bool:
     # Styled with the same shared "Citadels Market" layout as the admin
     # notification emails below (_admin_header/_admin_card/etc. — the name
     # predates this reuse, but the look is identical apart from brand/logo).
-    subject = "Your CaplinkTrades Account Is Ready"
+    subject = "Your HagoCapitals Account Is Ready"
     name = user.first_name or user.username or "Trader"
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
 
@@ -524,7 +524,7 @@ def send_welcome_email(user) -> bool:
       <tr><td align="center">
         <table width="600" class="email-container" cellpadding="0" cellspacing="0" border="0" style="background-color:{_ADMIN_BODY_BG};">
 
-          {_admin_header("Welcome to CaplinkTrades", "Your account has been successfully created.", "Welcome! Your trading journey starts here.")}
+          {_admin_header("Welcome to HagoCapitals", "Your account has been successfully created.", "Welcome! Your trading journey starts here.")}
 
           <tr>
             <td align="center" style="background-color:{_ADMIN_BODY_BG}; padding:0;">
@@ -535,7 +535,7 @@ def send_welcome_email(user) -> bool:
                     {_admin_card(f'''
                     <p style="margin:0 0 10px; font-size:22px; font-weight:700; color:{_ADMIN_TEXT_PRIMARY};">Hello, {name}.</p>
                     <p style="margin:0; font-size:15px; color:{_ADMIN_TEXT_MUTED}; line-height:1.7;">
-                      Welcome to <strong style="color:{_ADMIN_TEXT_PRIMARY};">CaplinkTrades</strong> &mdash; a professional-grade copy trading platform giving you access to global markets, expert traders, and real-time market intelligence. We're glad to have you on board.
+                      Welcome to <strong style="color:{_ADMIN_TEXT_PRIMARY};">HagoCapitals</strong> &mdash; a professional-grade copy trading platform giving you access to global markets, expert traders, and real-time market intelligence. We're glad to have you on board.
                     </p>
                     ''', padding="28px 32px")}
 
@@ -576,7 +576,7 @@ def send_welcome_email(user) -> bool:
 
                     <p style="margin:0; font-size:13px; color:{_ADMIN_TEXT_MUTED}; text-align:center; line-height:1.7;">
                       Questions? Our support team is available 24/7.<br>
-                      <a href="mailto:{getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', 'support@caplinktrades.com')}" style="color:{_ADMIN_BRAND}; font-weight:600;">Contact Support</a>
+                      <a href="mailto:{getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', 'support@hagocapitals.com')}" style="color:{_ADMIN_BRAND}; font-weight:600;">Contact Support</a>
                     </p>
 
                   </td>
@@ -627,7 +627,7 @@ def send_kyc_approved_email(user) -> bool:
         <div class="divider"></div>
         <div class="signature">
             <p>Thank you,</p>
-            <p class="signature-name">Caplink Trades</p>
+            <p class="signature-name">Hago Capitals</p>
             <p>Account Verification Department</p>
         </div>
     </div>
@@ -648,7 +648,7 @@ def send_verification_code_email(user, code: str) -> bool:
         <div class="greeting">Hello {name},</div>
         <div class="heading">Verify your email address</div>
         <div class="text">
-            To complete your CaplinkTrades registration, enter the code below.
+            To complete your HagoCapitals registration, enter the code below.
             It expires in <strong>10 minutes</strong>.
         </div>
         <div class="code-container">
@@ -657,17 +657,17 @@ def send_verification_code_email(user, code: str) -> bool:
         </div>
         <div class="notice">
             <p><strong>Security reminder:</strong> Never share this code with anyone.
-            CaplinkTrades will never ask for your code via phone or live chat.</p>
+            HagoCapitals will never ask for your code via phone or live chat.</p>
         </div>
         <div class="divider"></div>
         <div class="text" style="font-size:13px; color:#8fa896;">
-            If you did not create a CaplinkTrades account, you can safely ignore this email.
+            If you did not create a HagoCapitals account, you can safely ignore this email.
         </div>
     </div>
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Verify your email — CaplinkTrades", _wrap(body))
+    return send_email(user.email, "Verify your email — HagoCapitals", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -708,7 +708,7 @@ def send_2fa_code_email(user, code: str) -> bool:
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Login verification — CaplinkTrades", _wrap(body))
+    return send_email(user.email, "Login verification — HagoCapitals", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -726,7 +726,7 @@ def send_password_reset_email(user, token: str, uid: str) -> bool:
         <div class="greeting">Hello {name},</div>
         <div class="heading">Reset your password</div>
         <div class="text">
-            We received a request to reset the password for your CaplinkTrades account.
+            We received a request to reset the password for your HagoCapitals account.
             Click the button below to choose a new password. This link expires in
             <strong>1 hour</strong>.
         </div>
@@ -745,7 +745,7 @@ def send_password_reset_email(user, token: str, uid: str) -> bool:
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Password reset — CaplinkTrades", _wrap(body))
+    return send_email(user.email, "Password reset — HagoCapitals", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -763,12 +763,12 @@ def send_password_changed_email(user) -> bool:
         <div class="greeting">Hello {name},</div>
         <div class="heading">Your password has been changed</div>
         <div class="text">
-            This is a confirmation that the password for your CaplinkTrades account was
+            This is a confirmation that the password for your HagoCapitals account was
             successfully updated on <strong>{now}</strong>.
         </div>
         <div class="notice">
             <p><strong>Wasn't you?</strong> If you did not make this change, please
-            <a href="mailto:support@CaplinkTrades.com" style="color:#B0D45A;">contact support</a>
+            <a href="mailto:support@hagocapitals.com" style="color:#B0D45A;">contact support</a>
             immediately to secure your account.</p>
         </div>
         <div class="divider"></div>
@@ -780,7 +780,7 @@ def send_password_changed_email(user) -> bool:
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Password changed — CaplinkTrades", _wrap(body))
+    return send_email(user.email, "Password changed — HagoCapitals", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -791,7 +791,7 @@ def send_password_changed_email(user) -> bool:
 # functions — every other email in this file keeps its existing look.
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ADMIN_BRAND         = "#06811d"   # CaplinkTrades green
+_ADMIN_BRAND         = "#06811d"   # HagoCapitals green
 _ADMIN_HEADER_BG     = "#0d1117"
 _ADMIN_BODY_BG       = "#f0f2f5"
 _ADMIN_CARD_BG       = "#ffffff"
@@ -845,8 +845,8 @@ def _admin_header(title, subtitle="", preheader=""):
                       <tr>
                         <td style="background-color:{_ADMIN_BRAND}; border-radius:6px; width:8px; height:28px;">&nbsp;</td>
                         <td style="padding-left:10px; vertical-align:middle;">
-                          <span style="font-size:18px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">CAPLINK</span>
-                          <span style="font-size:18px; font-weight:300; color:{_ADMIN_BRAND}; letter-spacing:-0.3px;">&nbsp;TRADES</span>
+                          <span style="font-size:18px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">HAGO</span>
+                          <span style="font-size:18px; font-weight:300; color:{_ADMIN_BRAND}; letter-spacing:-0.3px;">&nbsp;CAPITALS</span>
                           <span style="font-size:11px; font-weight:500; color:#6b7280; letter-spacing:2px; display:block; margin-top:1px;">COPY TRADING PLATFORM</span>
                         </td>
                       </tr>
@@ -888,7 +888,7 @@ def _admin_notif_footer():
               <table cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
                   <td align="center">
-                    <p style="margin:0 0 6px; font-size:13px; font-weight:600; color:#9ca3af; letter-spacing:1px;">CAPLINKTRADES</p>
+                    <p style="margin:0 0 6px; font-size:13px; font-weight:600; color:#9ca3af; letter-spacing:1px;">HAGOCAPITALS</p>
                     <p style="margin:0 0 16px; font-size:11px; color:#4b5563;">Copy Trading Platform</p>
                     <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;">
                       <tr>
@@ -902,7 +902,7 @@ def _admin_notif_footer():
                       </tr>
                     </table>
                     <p style="margin:0; font-size:11px; color:#374151; line-height:1.6;">
-                      &copy; {year} CaplinkTrades. All rights reserved.<br>
+                      &copy; {year} HagoCapitals. All rights reserved.<br>
                       This is an automated message &mdash; please do not reply directly to this email.
                     </p>
                   </td>
@@ -1216,7 +1216,7 @@ def send_user_deposit_confirmation(user, transaction, wallet_name: str = "") -> 
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Deposit Request Received — CaplinkTrades", _wrap(body))
+    return send_email(user.email, "Deposit Request Received — HagoCapitals", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1278,7 +1278,7 @@ def send_user_withdrawal_confirmation(user, transaction, wallet_name: str = "") 
     {_signature_html()}
     {_footer_html(user.email)}
     """
-    return send_email(user.email, "Withdrawal Request Submitted — CaplinkTrades", _wrap(body))
+    return send_email(user.email, "Withdrawal Request Submitted — HagoCapitals", _wrap(body))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1512,7 +1512,7 @@ def send_user_deposit_approved_email(user, transaction) -> bool:
         <div class="heading">Deposit Approved &amp; Credited</div>
         <div class="text">
             Great news! Your deposit has been reviewed and approved.
-            The amount has been credited to your CaplinkTrades account and is ready to use.
+            The amount has been credited to your HagoCapitals account and is ready to use.
         </div>
         <div class="amount-box deposit">
             <div class="amount">${transaction.amount_usd:,.2f}</div>
@@ -1608,7 +1608,7 @@ def send_custom_email(
     cta_text: str = "",
     cta_url: str = "",
 ) -> bool:
-    """Send an admin-composed email to a single user using the CaplinkTrades template."""
+    """Send an admin-composed email to a single user using the HagoCapitals template."""
     name = user.first_name or user.username or "Trader"
     html = _build_custom_email_html(name, user.email, message, heading, social_links, cta_text, cta_url)
     return send_email(user.email, subject, html)

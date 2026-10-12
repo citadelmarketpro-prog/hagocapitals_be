@@ -1,5 +1,5 @@
 {% extends "panel/base.html" %}
-{% block title %}{{ action }} Trader — CaplinkTrades Admin{% endblock %}
+{% block title %}{{ action }} Trader — HagoCapitals Admin{% endblock %}
 {% block heading %}{{ action }} Trader{% endblock %}
 {% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#6366f1;">Traders</a> / {% if obj %}<a href="{% url 'panel:trader_detail' obj.pk %}" style="color:#6366f1;">{{ obj.name }}</a> / {% endif %}{{ action }}{% endblock %}
 
