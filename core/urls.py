@@ -37,6 +37,7 @@ from .views import (
     TraderSimilarListView,
     TransactionListView,
     WithdrawalView,
+    CancelWithdrawalView,
 )
 from .referral_views import (
     ReferralInfoView,
@@ -96,6 +97,7 @@ transaction_urlpatterns = [
     path("deposit-intent/", DepositIntentView.as_view(), name="transactions-deposit-intent"),
     path("withdraw/",   WithdrawalView.as_view(),       name="transactions-withdraw"),
     path("withdrawal-intent/", WithdrawalIntentView.as_view(), name="transactions-withdrawal-intent"),
+    path("<int:tx_id>/cancel/", CancelWithdrawalView.as_view(), name="transactions-cancel"),
 ]
 
 # Dashboard URLs — registered at /api/dashboard/ in main urls.py

@@ -910,6 +910,58 @@ class WithdrawalView(APIView):
         )
 
 
+class CancelWithdrawalView(APIView):
+    """POST /api/transactions/<id>/cancel/
+
+    Lets a user cancel their own still-pending withdrawal request. Refunds
+    the amount back to whichever field it was deducted from (Available
+    Balance or Profit/ROI) and flips the transaction to "cancelled"."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def post(self, request, tx_id):
+        from decimal import Decimal
+        from django.db import transaction as db_transaction
+
+        try:
+            tx = Transaction.objects.get(pk=tx_id, user=request.user, tx_type="withdrawal")
+        except Transaction.DoesNotExist:
+            return Response({"detail": "Withdrawal not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if tx.status != "pending":
+            return Response(
+                {"detail": "Only pending withdrawals can be cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        field = tx.withdraw_from or "balance"  # choices are exactly the User field names
+
+        with db_transaction.atomic():
+            user = type(request.user).objects.select_for_update().get(pk=request.user.pk)
+            current = getattr(user, field) or Decimal("0")
+            setattr(user, field, current + tx.amount_usd)
+            user.save(update_fields=[field])
+
+            tx.status = "cancelled"
+            tx.save(update_fields=["status"])
+
+        Notification.objects.create(
+            user=user,
+            notif_type="wallet",
+            title="Withdrawal Cancelled",
+            body=(
+                f"Your withdrawal of ${tx.amount_usd:.2f} ({tx.asset}) has been cancelled "
+                f"and refunded to your {tx.withdraw_from_label or 'Available Balance'}."
+            ),
+        )
+
+        return Response({
+            "detail": "Withdrawal cancelled.",
+            "balance": str(user.balance),
+            "roi": str(user.roi),
+        })
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Trader public listing / detail
 # ─────────────────────────────────────────────────────────────────────────────

@@ -58,6 +58,7 @@
         <div class="flex gap-2">
           <a href="{% url 'panel:user_detail' u.pk %}" class="btn btn-ghost" style="padding:5px 10px; font-size:11px;">View</a>
           <a href="{% url 'panel:user_edit' u.pk %}" class="btn btn-ghost" style="padding:5px 10px; font-size:11px;">Edit</a>
+          <a href="{% url 'panel:user_delete' u.pk %}" class="btn btn-danger" style="padding:5px 10px; font-size:11px;">Delete</a>
         </div>
       </td>
     </tr>

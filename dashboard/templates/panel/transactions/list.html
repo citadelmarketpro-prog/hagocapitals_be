@@ -49,6 +49,7 @@
       <td>
         {% if tx.status == "completed" %}<span class="badge badge-green">Completed</span>
         {% elif tx.status == "pending"  %}<span class="badge badge-yellow">Pending</span>
+        {% elif tx.status == "cancelled" %}<span class="badge badge-gray">Cancelled</span>
         {% else %}<span class="badge badge-red">Rejected</span>{% endif %}
       </td>
       <td>

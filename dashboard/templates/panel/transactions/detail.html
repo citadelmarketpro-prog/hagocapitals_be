@@ -18,6 +18,7 @@
           {% endif %}
           {% if obj.status == "completed" %}<span class="badge badge-green">Completed</span>
           {% elif obj.status == "pending"  %}<span class="badge badge-yellow">Pending</span>
+          {% elif obj.status == "cancelled" %}<span class="badge badge-gray">Cancelled</span>
           {% else %}<span class="badge badge-red">Rejected</span>{% endif %}
         </div>
         <p class="text-xl font-bold mt-2 truncate" title="${{ obj.amount_usd|floatformat:2|intcomma }}" style="color:#f8fafc;">${{ obj.amount_usd|floatformat:2|intcomma }}</p>
