@@ -667,9 +667,18 @@ _EDIT_TRADE_DURATION_CHOICES  = [
 class EditCopyTradeForm(forms.ModelForm):
     """Edit an existing CopyTrade record (does NOT recalculate PNL)."""
 
+    created_at = forms.DateTimeField(
+        label="Date Created (UTC)",
+        input_formats=["%Y-%m-%dT%H:%M"],
+        widget=forms.DateTimeInput(
+            attrs={"class": _FC, "type": "datetime-local"},
+            format="%Y-%m-%dT%H:%M",
+        ),
+    )
+
     class Meta:
         model  = CopyTrade
-        fields = ["asset_type", "asset", "direction", "entry", "earning_pct", "pnl", "duration", "status"]
+        fields = ["asset_type", "asset", "direction", "entry", "earning_pct", "pnl", "duration", "status", "created_at"]
         widgets = {
             "asset_type":  forms.Select(choices=_EDIT_TRADE_TYPE_CHOICES,      attrs={"class": _FC}),
             "asset":       forms.TextInput(attrs={"class": _FC}),
@@ -678,6 +687,7 @@ class EditCopyTradeForm(forms.ModelForm):
             "earning_pct": forms.NumberInput(attrs={"step": "0.01", "class": _FC}),
             "pnl":         forms.NumberInput(attrs={"step": "0.01", "class": _FC}),
             "duration":    forms.Select(choices=_EDIT_TRADE_DURATION_CHOICES,  attrs={"class": _FC}),
+            "created_at":  forms.DateTimeInput(attrs={"class": _FC, "type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
             "status":      forms.Select(choices=_EDIT_TRADE_STATUS_CHOICES,    attrs={"class": _FC}),
         }
 
