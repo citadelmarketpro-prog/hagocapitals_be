@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 from cloudinary.models import CloudinaryField
 
 
@@ -423,7 +424,7 @@ class CopyTrade(models.Model):
     pnl               = models.DecimalField(max_digits=18, decimal_places=2, default=0)   # calculated USD value
     duration          = models.CharField(max_length=10, choices=DURATION_CHOICES, default="1h")
     status            = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
-    created_at        = models.DateTimeField(auto_now_add=True)
+    created_at        = models.DateTimeField(default=timezone.now)  # admin-editable at creation, not forced to "now"
 
     class Meta:
         ordering = ["-created_at"]

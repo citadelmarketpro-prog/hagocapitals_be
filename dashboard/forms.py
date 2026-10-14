@@ -1,5 +1,6 @@
 import json
 from django import forms
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -633,6 +634,17 @@ class AddTradeForm(forms.Form):
                                       label="Earning Percentage (%)")
     duration     = forms.ChoiceField(choices=DURATION_CHOICES, widget=forms.Select(attrs={"class": _FC}))
     status       = forms.ChoiceField(choices=STATUS_CHOICES,   widget=forms.Select(attrs={"class": _FC}))
+    created_at   = forms.DateTimeField(
+        required=False,
+        label="Date Created (UTC)",
+        help_text="Defaults to right now if left blank — set this to backdate the trade.",
+        input_formats=["%Y-%m-%dT%H:%M"],
+        widget=forms.DateTimeInput(
+            attrs={"class": _FC, "type": "datetime-local"},
+            format="%Y-%m-%dT%H:%M",
+        ),
+        initial=timezone.now,
+    )
 
     def clean_asset(self):
         asset = self.cleaned_data.get("asset", "").strip()

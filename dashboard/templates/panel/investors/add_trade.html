@@ -95,6 +95,14 @@
         {% if form.status.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ form.status.errors.0 }}</p>{% endif %}
       </div>
 
+      <!-- Date Created -->
+      <div class="mb-6">
+        <label class="block text-xs font-semibold uppercase tracking-widest mb-1.5" style="color:#94a3b8;">Date Created (UTC)</label>
+        {{ form.created_at }}
+        <p class="text-xs mt-1" style="color:#64748b;">Defaults to right now if left blank — set this to backdate the trade.</p>
+        {% if form.created_at.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ form.created_at.errors.0 }}</p>{% endif %}
+      </div>
+
       <div class="flex gap-3">
         <button type="submit" class="btn btn-primary flex-1">Add Trade</button>
         <a href="{% url 'panel:investor_list' %}" class="btn btn-ghost">Cancel</a>

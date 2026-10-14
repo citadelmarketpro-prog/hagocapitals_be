@@ -601,6 +601,7 @@ def _apply_trade(user, cd):
         pnl         = pnl_amount,
         duration    = cd["duration"],
         status      = cd["status"],
+        created_at  = cd.get("created_at") or timezone.now(),
     )
 
 
