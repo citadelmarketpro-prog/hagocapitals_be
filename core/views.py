@@ -1009,6 +1009,21 @@ class TraderListView(APIView):
         return Response(result)
 
 
+class PublicTraderListView(APIView):
+    """GET /api/traders/public/ — unauthenticated, for the marketing homepage.
+
+    Top 10 active traders by the model's default ordering (-gain, -copiers),
+    same flat shape as TraderListView's sections (TraderSerializer) so the
+    homepage "Copy from the best traders" section renders real trader data.
+    """
+    authentication_classes = []
+    permission_classes     = [AllowAny]
+
+    def get(self, request):
+        top_traders = Trader.objects.filter(is_active=True)[:10]
+        return Response(TraderSerializer(top_traders, many=True).data)
+
+
 class TraderDetailView(APIView):
     """GET /api/traders/<pk>/"""
     authentication_classes = [CookieJWTAuthentication]

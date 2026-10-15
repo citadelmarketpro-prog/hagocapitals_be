@@ -32,6 +32,7 @@ from .views import (
     ResetPasswordView,
     TokenRefreshView,
     CopyTraderView,
+    PublicTraderListView,
     TraderDetailView,
     TraderListView,
     TraderSimilarListView,
@@ -118,6 +119,7 @@ transfer_urlpatterns = [
 # Trader URLs — registered at /api/traders/ in main urls.py
 trader_urlpatterns = [
     path("",                    TraderListView.as_view(),         name="traders-list"),
+    path("public/",             PublicTraderListView.as_view(),   name="traders-public"),
     path("<int:pk>/",           TraderDetailView.as_view(),       name="traders-detail"),
     path("<int:pk>/similar/",   TraderSimilarListView.as_view(),  name="traders-similar"),
     path("<int:pk>/copy/",      CopyTraderView.as_view(),         name="traders-copy"),
