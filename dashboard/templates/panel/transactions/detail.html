@@ -75,11 +75,14 @@
       {% endif %}
     </div>
 
-    <!-- Actions -->
-    {% if obj.status == "pending" %}
+    <!-- Correct record — always available, regardless of status -->
     <div class="p-4 rounded-xl mb-4" style="background:#131c2e; border:1px solid #263353;">
       <p class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#94a3b8;">Correct request details</p>
+      {% if obj.status == "pending" %}
       <p class="text-xs mb-4" style="color:#475569;">If what the user actually sent or uploaded doesn't match what they entered, fix it here before approving.</p>
+      {% else %}
+      <p class="text-xs mb-4" style="color:#475569;">This transaction has already been {{ obj.status }} — editing here only corrects this record. It will <strong>not</strong> add, remove, or otherwise change the user's balance or profit.</p>
+      {% endif %}
       <form method="post" action="{% url 'panel:transaction_edit' obj.pk %}">
         {% csrf_token %}
         <input type="hidden" name="status" value="{{ edit_form.instance.status }}" />
@@ -100,6 +103,9 @@
         <button type="submit" class="btn btn-ghost">Save Changes</button>
       </form>
     </div>
+
+    <!-- Status-specific actions / info -->
+    {% if obj.status == "pending" %}
     <div class="p-4 rounded-xl mb-0" style="background:#131c2e; border:1px solid #263353;">
       <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:#94a3b8;">Actions</p>
       <form method="post" action="{% url 'panel:transaction_approve' obj.pk %}" class="mb-4">

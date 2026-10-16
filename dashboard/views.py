@@ -343,7 +343,7 @@ def withdrawal_list(request):
 @superuser_required
 def transaction_detail(request, pk):
     obj = get_object_or_404(Transaction, pk=pk)
-    edit_form = TransactionEditForm(instance=obj) if obj.status == "pending" else None
+    edit_form = TransactionEditForm(instance=obj)
     return render(request, "panel/transactions/detail.html", {"obj": obj, "edit_form": edit_form})
 
 
@@ -351,9 +351,6 @@ def transaction_detail(request, pk):
 @require_POST
 def transaction_edit(request, pk):
     tx = get_object_or_404(Transaction, pk=pk)
-    if tx.status != "pending":
-        messages.error(request, "Only pending transactions can be edited.")
-        return redirect("panel:transaction_detail", pk=pk)
     old_amount_usd = tx.amount_usd  # captured before form validation mutates tx in place
     data = request.POST.copy()
     data["units"] = data.get("amount_usd", tx.units)  # units tracks the USD amount 1:1 on this platform
@@ -362,11 +359,16 @@ def transaction_edit(request, pk):
         messages.error(request, "Could not save changes — please check the values entered.")
         return redirect("panel:transaction_detail", pk=pk)
 
-    if tx.tx_type == "withdrawal":
-        # Withdrawal funds are reserved (deducted) the instant the request is
-        # made, so changing the amount here must re-reserve the difference —
-        # otherwise what's actually deducted drifts from what the transaction
-        # says, and a later approve/reject would act on the wrong figure.
+    # Withdrawal funds are reserved (deducted) the instant the request is made,
+    # so while it's still pending, changing the amount here must re-reserve the
+    # difference — otherwise what's actually deducted drifts from what the
+    # transaction says, and a later approve/reject would act on the wrong figure.
+    # Once a transaction is no longer pending (completed/rejected/cancelled),
+    # editing is purely a record correction — e.g. the admin later discovers
+    # the user actually sent/requested a different amount than what was
+    # processed. It must NOT re-touch the user's balance/ROI a second time;
+    # that already happened (or didn't) when the transaction was decided.
+    if tx.tx_type == "withdrawal" and tx.status == "pending":
         field = "roi" if tx.withdraw_from == "roi" else "balance"
         source_label = "Profit (ROI)" if field == "roi" else "Available Balance"
         delta = form.cleaned_data["amount_usd"] - old_amount_usd  # +ve = needs more reserved
@@ -380,8 +382,7 @@ def transaction_edit(request, pk):
             setattr(user, field, getattr(user, field) - delta)
             user.save(update_fields=[field])
 
-    # Editing corrects the request (e.g. the user actually sent a different
-    # amount than they entered) — it must never itself flip the status;
+    # Editing corrects the record — it must never itself flip the status;
     # approve/reject are the only actions that do that.
     form.instance.status = tx.status
     form.save()
