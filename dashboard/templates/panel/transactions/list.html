@@ -55,6 +55,7 @@
       <td>
         <div class="flex gap-2">
           <a href="{% url 'panel:transaction_detail' tx.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">View</a>
+          <a href="{% url 'panel:transaction_edit' tx.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
           {% if tx.status == "pending" %}
             <form method="post" action="{% url 'panel:transaction_approve' tx.pk %}">{% csrf_token %}
               <button type="submit" class="btn btn-success" style="padding:4px 10px; font-size:11px;">Approve</button>

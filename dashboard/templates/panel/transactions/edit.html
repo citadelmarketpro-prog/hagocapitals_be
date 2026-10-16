@@ -1,0 +1,68 @@
+{% extends "panel/base.html" %}
+{% load humanize %}
+{% block title %}Edit Transaction {{ obj.tx_id }} — HagoCapitals Admin{% endblock %}
+{% block heading %}Edit Transaction{% endblock %}
+{% block breadcrumb %}<a href="{% if obj.tx_type == 'deposit' %}{% url 'panel:deposit_list' %}{% else %}{% url 'panel:withdrawal_list' %}{% endif %}" style="color:#6366f1;">{% if obj.tx_type == 'deposit' %}Deposits{% else %}Withdrawals{% endif %}</a> / <a href="{% url 'panel:transaction_detail' obj.pk %}" style="color:#6366f1;">{{ obj.tx_id|truncatechars:16 }}…</a> / Edit{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="panel-card p-6 mb-5">
+    <div class="flex items-center gap-3 mb-5">
+      {% if obj.tx_type == "deposit" %}
+        <span class="badge badge-green text-sm">Deposit</span>
+      {% else %}
+        <span class="badge badge-red text-sm">Withdrawal</span>
+      {% endif %}
+      {% if obj.status == "completed" %}<span class="badge badge-green">Completed</span>
+      {% elif obj.status == "pending"  %}<span class="badge badge-yellow">Pending</span>
+      {% elif obj.status == "cancelled" %}<span class="badge badge-gray">Cancelled</span>
+      {% else %}<span class="badge badge-red">Rejected</span>{% endif %}
+    </div>
+
+    {% if obj.status == "pending" %}
+      <p class="text-xs mb-5" style="color:#475569;">If what the user actually sent or uploaded doesn't match what they entered, fix it here before approving.</p>
+    {% else %}
+      <p class="text-xs mb-5" style="color:#475569;">This transaction has already been {{ obj.status }} — saving here only corrects this record. It will <strong>not</strong> add, remove, or otherwise change the user's balance or profit.</p>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+      <div class="mb-4 px-4 py-3 text-sm" style="background:#2a0808;border:1px solid #7f1d1d;color:#f87171;border-radius:4px;">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="mb-5">
+        <label class="form-label">User</label>
+        <p class="text-sm" style="color:#94a3b8;">{{ obj.user.email }}</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-5">
+        <div>
+          <label class="form-label">Amount (USD / Units)</label>
+          <input type="number" name="amount_usd" class="form-control" step="0.01" min="0" required value="{{ form.amount_usd.value|default:obj.amount_usd|stringformat:'s' }}" />
+          {% if form.amount_usd.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ form.amount_usd.errors.0 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="form-label">Asset</label>
+          <input type="text" name="asset" class="form-control" required value="{{ form.asset.value|default:obj.asset }}" />
+          {% if form.asset.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ form.asset.errors.0 }}</p>{% endif %}
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <label class="form-label">Wallet Address</label>
+        <input type="text" name="wallet_address" class="form-control" value="{{ form.wallet_address.value|default:obj.wallet_address }}" />
+        {% if form.wallet_address.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ form.wallet_address.errors.0 }}</p>{% endif %}
+      </div>
+
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'panel:transaction_detail' obj.pk %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

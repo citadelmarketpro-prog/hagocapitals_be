@@ -348,16 +348,20 @@ def transaction_detail(request, pk):
 
 
 @superuser_required
-@require_POST
 def transaction_edit(request, pk):
     tx = get_object_or_404(Transaction, pk=pk)
+
+    if request.method == "GET":
+        form = TransactionEditForm(instance=tx)
+        return render(request, "panel/transactions/edit.html", {"obj": tx, "form": form})
+
     old_amount_usd = tx.amount_usd  # captured before form validation mutates tx in place
     data = request.POST.copy()
     data["units"] = data.get("amount_usd", tx.units)  # units tracks the USD amount 1:1 on this platform
+    data["status"] = tx.status  # status is never editable from this form — approve/reject own that
     form = TransactionEditForm(data, instance=tx)
     if not form.is_valid():
-        messages.error(request, "Could not save changes — please check the values entered.")
-        return redirect("panel:transaction_detail", pk=pk)
+        return render(request, "panel/transactions/edit.html", {"obj": tx, "form": form})
 
     # Withdrawal funds are reserved (deducted) the instant the request is made,
     # so while it's still pending, changing the amount here must re-reserve the
