@@ -1,4 +1,5 @@
 import requests
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from decouple import config
 
 FMP_BASE    = "https://financialmodelingprep.com/stable"
@@ -62,8 +63,41 @@ def get_crypto_quotes():
     """
     Fetch all crypto quotes in one call.
     Returns a list of {symbol, price, ...} dicts.
+    Note: requires a plan with batch-crypto-quotes access (402 on Starter).
+    Prefer get_crypto_quotes_parallel() for single-symbol-quote plans.
     """
     return fmp_get("/batch-crypto-quotes")
+
+
+def _fetch_one_quote(symbol):
+    """Fetch a single symbol quote. Returns the first item or None."""
+    try:
+        data = fmp_get("/quote", {"symbol": symbol})
+        if isinstance(data, list) and data:
+            return data[0]
+    except Exception:
+        pass
+    return None
+
+
+def get_crypto_quotes_parallel(symbols):
+    """
+    Fetch quotes for a list of FMP crypto ticker symbols (e.g. "BTCUSD") in
+    parallel. The Starter plan doesn't support /batch-crypto-quotes, so each
+    symbol is fetched individually via /quote, same as get_stock_quotes
+    needs for symbols FMP won't accept comma-joined.
+    Returns a list of quote dicts (same shape as the batch endpoint).
+    """
+    if not symbols:
+        return []
+    results = []
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = {pool.submit(_fetch_one_quote, sym): sym for sym in symbols}
+        for future in as_completed(futures):
+            quote = future.result()
+            if quote:
+                results.append(quote)
+    return results
 
 
 def get_stock_quotes(symbols: list) -> list:

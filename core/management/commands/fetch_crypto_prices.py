@@ -1,60 +1,57 @@
 from decimal import Decimal, InvalidOperation
 
-import requests
 from django.core.management.base import BaseCommand
 
+from core import fmp_client
 from core.models import CryptoPrice
 
-# CoinGecko ID → our wallet symbol
-# Free API, no key required: https://api.coingecko.com/api/v3/simple/price
-COINGECKO_MAP = {
-    "bitcoin":       "BTC",
-    "ethereum":      "ETH",
-    "tether":        "USDT",
-    "binancecoin":   "BNB",
-    "usd-coin":      "USDC",
-    "litecoin":      "LTC",
-    "ripple":        "XRP",
-    "solana":        "SOL",
-    "dogecoin":      "DOGE",
-    "tron":          "TRX",
-    "matic-network": "MATIC",
-    "avalanche-2":   "AVAX",
-    "bitcoin-cash":  "BCH",
+# Our wallet symbol -> FMP crypto ticker
+FMP_TICKER_MAP = {
+    "BTC":   "BTCUSD",
+    "ETH":   "ETHUSD",
+    "BNB":   "BNBUSD",
+    "LTC":   "LTCUSD",
+    "XRP":   "XRPUSD",
+    "SOL":   "SOLUSD",
+    "DOGE":  "DOGEUSD",
+    "TRX":   "TRXUSD",
+    "MATIC": "MATICUSD",
+    "AVAX":  "AVAXUSD",
+    "BCH":   "BCHUSD",
 }
 
-_CG_URL = "https://api.coingecko.com/api/v3/simple/price"
+# Stablecoins are pegged rather than pulled from FMP: avoids noisy/missing
+# quotes for a price that should always read as ~$1.
+STABLECOIN_SYMBOLS = ["USDT", "USDC"]
 
 
 class Command(BaseCommand):
-    help = "Fetch current crypto prices from CoinGecko (free, no key) for deposit unit calculation."
+    help = "Fetch current crypto prices from FMP for deposit unit calculation."
 
     def handle(self, *args, **options):
-        ids = ",".join(COINGECKO_MAP.keys())
-        try:
-            resp = requests.get(
-                _CG_URL,
-                params={"ids": ids, "vs_currencies": "usd"},
-                timeout=15,
-                headers={"Accept": "application/json"},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception as exc:
-            self.stderr.write(f"CoinGecko request failed: {exc}")
-            return
-
-        if not isinstance(data, dict):
-            self.stderr.write(f"Unexpected response: {data}")
-            return
-
         updated = skipped = 0
-        for cg_id, local_sym in COINGECKO_MAP.items():
-            entry = data.get(cg_id, {})
-            raw_price = entry.get("usd", 0)
+
+        for symbol in STABLECOIN_SYMBOLS:
+            CryptoPrice.objects.update_or_create(
+                symbol=symbol, defaults={"price_usd": Decimal("1.000000")}
+            )
+            updated += 1
+
+        tickers = list(FMP_TICKER_MAP.values())
+        try:
+            quotes = fmp_client.get_crypto_quotes_parallel(tickers)
+        except Exception as exc:
+            self.stderr.write(f"FMP request failed: {exc}")
+            return
+
+        quotes_by_ticker = {q.get("symbol"): q for q in quotes if isinstance(q, dict)}
+
+        for local_sym, ticker in FMP_TICKER_MAP.items():
+            quote = quotes_by_ticker.get(ticker)
+            raw_price = quote.get("price") if quote else None
             try:
                 price = Decimal(str(raw_price))
-            except InvalidOperation:
+            except (InvalidOperation, TypeError):
                 skipped += 1
                 continue
 
@@ -63,8 +60,7 @@ class Command(BaseCommand):
                 continue
 
             CryptoPrice.objects.update_or_create(
-                symbol=local_sym,
-                defaults={"price_usd": price},
+                symbol=local_sym, defaults={"price_usd": price}
             )
             updated += 1
 
