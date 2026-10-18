@@ -40,17 +40,10 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div>
-          <label class="form-label">Username</label>
-          <input type="text" name="username" value="{{ form.username.value|default:'' }}" class="form-control" required />
-          {% for e in form.username.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
-        </div>
-        <div>
-          <label class="form-label">Email</label>
-          <input type="email" name="email" value="{{ form.email.value|default:'' }}" class="form-control" required />
-          {% for e in form.email.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
-        </div>
+      <div class="mt-4">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" value="{{ form.email.value|default:'' }}" class="form-control" required />
+        {% for e in form.email.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
       </div>
 
       <div class="mt-4">

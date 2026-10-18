@@ -35,7 +35,7 @@ class UserEditForm(forms.ModelForm):
         model = User
         fields = [
             # Account
-            "first_name", "last_name", "username", "email",
+            "first_name", "last_name", "email",
             "bio",
             # Financials
             "balance", "roi", "percentage_roi",
@@ -83,7 +83,7 @@ class UserCreateForm(forms.ModelForm):
 
     class Meta:
         model  = User
-        fields = ["first_name", "last_name", "username", "email", "is_staff", "is_superuser"]
+        fields = ["first_name", "last_name", "email", "is_staff", "is_superuser"]
 
     def clean(self):
         cleaned = super().clean()

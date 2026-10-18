@@ -15,7 +15,7 @@
 <!-- Filters -->
 <div class="flex flex-wrap gap-3 mb-6">
   <form method="get" class="flex flex-wrap gap-3 flex-1">
-    <input type="text" name="q" value="{{ q }}" placeholder="Search email, name, username…" class="form-control" style="max-width:280px;" />
+    <input type="text" name="q" value="{{ q }}" placeholder="Search email, name…" class="form-control" style="max-width:280px;" />
     <select name="kyc" class="form-control" style="max-width:180px;">
       <option value="">All KYC status</option>
       {% for val, label in kyc_choices %}

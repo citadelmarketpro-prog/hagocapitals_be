@@ -22,11 +22,6 @@
         </div>
       </div>
       <div class="mb-4">
-        <label class="form-label">Username *</label>
-        <input type="text" name="username" value="{{ form.username.value|default:'' }}" class="form-control" required />
-        {% for err in form.username.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ err }}</p>{% endfor %}
-      </div>
-      <div class="mb-4">
         <label class="form-label">Email *</label>
         <input type="email" name="email" value="{{ form.email.value|default:'' }}" class="form-control" required />
         {% for err in form.email.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ err }}</p>{% endfor %}

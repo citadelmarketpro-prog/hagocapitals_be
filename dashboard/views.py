@@ -79,7 +79,7 @@ def user_list(request):
     qs = User.objects.order_by("-date_joined")
     q  = request.GET.get("q","").strip()
     kf = request.GET.get("kyc","")
-    if q:  qs = qs.filter(Q(email__icontains=q)|Q(username__icontains=q)|Q(first_name__icontains=q)|Q(last_name__icontains=q))
+    if q:  qs = qs.filter(Q(email__icontains=q)|Q(first_name__icontains=q)|Q(last_name__icontains=q))
     if kf: qs = qs.filter(kyc_status=kf)
     page = Paginator(qs, 25).get_page(request.GET.get("page"))
     return render(request, "panel/users/list.html", {"page_obj": page, "q": q, "kyc_filter": kf, "kyc_choices": User.KYC_STATUS_CHOICES})
@@ -733,7 +733,7 @@ def custom_email_list(request):
     qs = User.objects.order_by("-date_joined")
     q  = request.GET.get("q", "").strip()
     if q:
-        qs = qs.filter(Q(email__icontains=q) | Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
+        qs = qs.filter(Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
     page = Paginator(qs, 25).get_page(request.GET.get("page"))
     return render(request, "panel/emails/list.html", {"page_obj": page, "q": q})
 

@@ -481,7 +481,7 @@ def send_welcome_email(user) -> bool:
     # notification emails below (_admin_header/_admin_card/etc. — the name
     # predates this reuse, but the look is identical apart from brand/logo).
     subject = "Your HagoCapitals Account Is Ready"
-    name = user.first_name or user.username or "Trader"
+    name = user.first_name or "Trader"
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
 
     steps = [
@@ -601,7 +601,7 @@ def send_welcome_email(user) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_kyc_approved_email(user) -> bool:
-    name     = user.first_name or user.username or "Trader"
+    name     = user.first_name or "Trader"
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
     body = f"""
     {_header_html()}
@@ -641,7 +641,7 @@ def send_kyc_approved_email(user) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_verification_code_email(user, code: str) -> bool:
-    name = user.first_name or user.username or "Trader"
+    name = user.first_name or "Trader"
     body = f"""
     {_header_html()}
     <div class="body-content">
@@ -675,7 +675,7 @@ def send_verification_code_email(user, code: str) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_2fa_code_email(user, code: str) -> bool:
-    name = user.first_name or user.username or "Trader"
+    name = user.first_name or "Trader"
     now  = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
     body = f"""
     {_header_html()}
@@ -718,7 +718,7 @@ def send_2fa_code_email(user, code: str) -> bool:
 def send_password_reset_email(user, token: str, uid: str) -> bool:
     frontend   = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
     reset_link = f"{frontend}/reset-password?uid={uid}&token={token}"
-    name       = user.first_name or user.username or "Trader"
+    name       = user.first_name or "Trader"
 
     body = f"""
     {_header_html()}
@@ -753,7 +753,7 @@ def send_password_reset_email(user, token: str, uid: str) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_password_changed_email(user) -> bool:
-    name = user.first_name or user.username or "Trader"
+    name = user.first_name or "Trader"
     now  = timezone.now().strftime("%b %d, %Y at %I:%M %p UTC")
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
   
@@ -1174,7 +1174,7 @@ def send_admin_deposit_notification(user, transaction, wallet=None) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_user_deposit_confirmation(user, transaction, wallet_name: str = "") -> bool:
-    name     = user.first_name or user.username or "Trader"
+    name     = user.first_name or "Trader"
     tx_date  = transaction.created_at.strftime("%b %d, %Y at %I:%M %p UTC")
     asset_label = transaction.asset + (f" ({wallet_name})" if wallet_name else "")
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
@@ -1224,7 +1224,7 @@ def send_user_deposit_confirmation(user, transaction, wallet_name: str = "") -> 
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_user_withdrawal_confirmation(user, transaction, wallet_name: str = "") -> bool:
-    name     = user.first_name or user.username or "Trader"
+    name     = user.first_name or "Trader"
     tx_date  = transaction.created_at.strftime("%b %d, %Y at %I:%M %p UTC")
     asset_label = transaction.asset + (f" ({wallet_name})" if wallet_name else "")
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
@@ -1501,7 +1501,7 @@ def send_admin_withdrawal_notification(user, transaction, payment_method=None) -
 # ─────────────────────────────────────────────────────────────────────────────
 
 def send_user_deposit_approved_email(user, transaction) -> bool:
-    name     = user.first_name or user.username or "Trader"
+    name     = user.first_name or "Trader"
     tx_date  = transaction.created_at.strftime("%b %d, %Y at %I:%M %p UTC")
     frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
 
@@ -1609,7 +1609,7 @@ def send_custom_email(
     cta_url: str = "",
 ) -> bool:
     """Send an admin-composed email to a single user using the HagoCapitals template."""
-    name = user.first_name or user.username or "Trader"
+    name = user.first_name or "Trader"
     html = _build_custom_email_html(name, user.email, message, heading, social_links, cta_text, cta_url)
     return send_email(user.email, subject, html)
 

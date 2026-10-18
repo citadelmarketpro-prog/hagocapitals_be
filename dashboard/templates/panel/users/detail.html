@@ -28,7 +28,7 @@
         {% endif %}
         <div class="min-w-0">
           <h2 class="text-sm font-bold truncate" style="color:#f8fafc;">
-            {% if obj.first_name or obj.last_name %}{{ obj.first_name }} {{ obj.last_name }}{% else %}{{ obj.username }}{% endif %}
+            {% if obj.first_name or obj.last_name %}{{ obj.first_name }} {{ obj.last_name }}{% else %}{{ obj.email }}{% endif %}
           </h2>
           <p class="text-xs truncate" style="color:#94a3b8;">{{ obj.email }}</p>
           {% if not obj.is_active %}<span class="badge badge-red mt-1">Inactive</span>{% endif %}
@@ -115,10 +115,6 @@
     <div class="panel-card p-5">
       <p class="text-[10px] uppercase tracking-wide font-semibold mb-3" style="color:#94a3b8;">Account Info</p>
       <div class="space-y-2 text-sm">
-        <div class="flex justify-between gap-2 flex-wrap">
-          <span style="color:#94a3b8;">Username</span>
-          <span class="font-mono text-xs truncate" style="color:#f8fafc;">{{ obj.username }}</span>
-        </div>
         <div class="flex justify-between gap-2 flex-wrap">
           <span style="color:#94a3b8;">Joined</span>
           <span style="color:#f8fafc;">{{ obj.date_joined|date:"M d, Y" }}</span>

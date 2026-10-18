@@ -24,7 +24,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = User
-        fields = ["id", "username", "email", "password", "password2", "referral_code"]
+        fields = ["id", "email", "password", "password2", "referral_code"]
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password2"]:
@@ -42,7 +42,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         referrer = User.objects.filter(referral_code=referral_code).first() if referral_code else None
 
         user = User.objects.create_user(
-            username=validated_data["username"],
             email=validated_data["email"],
             password=plain,
             referred_by=referrer,
@@ -63,7 +62,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
         fields = [
-            "id", "username", "email", "first_name", "last_name",
+            "id", "email", "first_name", "last_name",
             "avatar_url", "bio",
             "balance", "roi", "percentage_roi",
             "kyc_status",
@@ -89,7 +88,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = User
-        fields = ["username", "first_name", "last_name", "bio", "avatar"]
+        fields = ["first_name", "last_name", "bio", "avatar"]
 
 
 class KycSerializer(serializers.ModelSerializer):
@@ -273,7 +272,7 @@ class CopyRelationshipSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         u = obj.copier
         full = f"{u.first_name} {u.last_name}".strip()
-        return full or u.username
+        return full or u.email
 
     def get_copyDays(self, obj):
         from django.utils import timezone

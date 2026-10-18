@@ -10,7 +10,7 @@
 <!-- Filters -->
 <div class="flex flex-wrap gap-3 mb-6">
   <form method="get" class="flex flex-wrap gap-3">
-    <input type="text" name="q" value="{{ q }}" placeholder="Search email, name, username…" class="form-control" style="max-width:280px;" />
+    <input type="text" name="q" value="{{ q }}" placeholder="Search email, name…" class="form-control" style="max-width:280px;" />
     <button type="submit" class="btn btn-primary">Filter</button>
     {% if q %}<a href="{% url 'panel:custom_email_list' %}" class="btn btn-ghost">Clear</a>{% endif %}
   </form>

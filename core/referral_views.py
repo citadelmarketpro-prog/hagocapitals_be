@@ -125,7 +125,7 @@ class ReferralValidateView(APIView):
         if not referrer:
             return Response({"success": True, "valid": False, "error": "Invalid referral code"})
 
-        name = f"{referrer.first_name} {referrer.last_name}".strip() or referrer.username
+        name = f"{referrer.first_name} {referrer.last_name}".strip() or referrer.email
         return Response({
             "success": True,
             "valid": True,

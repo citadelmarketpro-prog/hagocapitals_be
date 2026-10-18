@@ -8,15 +8,15 @@ from .models import (
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display   = ("email", "username", "first_name", "last_name", "balance", "roi", "portfolio_target", "portfolio_target_visible", "current_loyalty_status", "kyc_status", "allow_transfer", "date_joined")
+    list_display   = ("email", "first_name", "last_name", "balance", "roi", "portfolio_target", "portfolio_target_visible", "current_loyalty_status", "kyc_status", "allow_transfer", "date_joined")
     list_filter    = ("kyc_status", "allow_transfer", "portfolio_target_visible", "current_loyalty_status", "is_active", "is_staff")
-    search_fields  = ("email", "username", "first_name", "last_name")
+    search_fields  = ("email", "first_name", "last_name")
     ordering       = ("-date_joined",)
     list_editable  = ("allow_transfer", "portfolio_target_visible")
     readonly_fields = ("date_joined", "last_login", "password", "referral_code")
     fieldsets = (
         ("Account", {
-            "fields": ("email", "username", "password", "is_active", "is_staff", "is_superuser"),
+            "fields": ("email", "password", "is_active", "is_staff", "is_superuser"),
         }),
         ("Profile", {
             "fields": ("first_name", "last_name", "bio", "avatar", "phone"),
@@ -143,7 +143,7 @@ class TraderAdmin(admin.ModelAdmin):
 class CopyRelationshipAdmin(admin.ModelAdmin):
     list_display  = ("copier", "trader", "allocated_amount", "pl", "started_at")
     list_filter   = ("trader",)
-    search_fields = ("copier__email", "copier__username", "trader__name")
+    search_fields = ("copier__email", "trader__name")
     ordering      = ("-started_at",)
     readonly_fields = ("started_at",)
 

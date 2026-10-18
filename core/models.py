@@ -1,18 +1,47 @@
 import uuid
 
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.db import models
 from django.utils import timezone
 from cloudinary.models import CloudinaryField
 
 
+class UserManager(DjangoUserManager):
+    """
+    Same as Django's default UserManager, but create_user/create_superuser
+    don't take a username — this project logs in by email only and has no
+    username field at all.
+    """
+
+    def create_user(self, email=None, password=None, **extra_fields):
+        if not email:
+            raise ValueError("The Email field must be set")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+        return self.create_user(email, password, **extra_fields)
+
+
 class User(AbstractUser):
     """
     Extended user model for HagoCapitals.
-    Username + email are both required and unique.
+    Email-only — there is no username field.
     """
+    username = None
     email = models.EmailField(unique=True)
+
+    objects = UserManager()
 
     # Profile
     avatar = CloudinaryField("avatar", folder="avatars", null=True, blank=True)
@@ -197,7 +226,7 @@ class User(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD  = "email"
-    REQUIRED_FIELDS = ["username"]
+    REQUIRED_FIELDS = []
 
     def __str__(self):
         return self.email
