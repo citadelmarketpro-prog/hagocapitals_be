@@ -1220,6 +1220,49 @@ def send_user_deposit_confirmation(user, transaction, wallet_name: str = "") -> 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# User: abandoned-deposit reminder
+# ─────────────────────────────────────────────────────────────────────────────
+
+def send_deposit_reminder_email(user, intent) -> bool:
+    """Sent by the send_deposit_reminders management command when a
+    DepositIntent has sat uncompleted past the reminder delay — nudges the
+    user to come back and finish the deposit they started."""
+    name     = user.first_name or "Trader"
+    frontend = getattr(settings, "FRONTEND_URL", "http://localhost:3000")
+
+    body = f"""
+    {_header_html()}
+    <div class="body-content">
+        <div class="greeting">Hello {name},</div>
+        <div class="heading">Did life get in the way?</div>
+        <div class="text">
+            We noticed you started a deposit but haven't completed it yet.
+            Don't let it slip — finish funding your account so your capital
+            can start working for you.
+        </div>
+        <div class="amount-box neutral">
+            <div class="amount">${intent.amount_usd}</div>
+            <div class="amount-label">{intent.asset} deposit awaiting completion</div>
+        </div>
+        <div class="notice">
+            <p>Nothing has been charged yet — this deposit was never submitted,
+            so there's nothing to cancel. It only takes a minute to finish.</p>
+        </div>
+        <div style="text-align:center; margin:28px 0;">
+            <a href="{frontend}/dashboard" class="btn">Complete Your Deposit</a>
+        </div>
+        <div class="text" style="font-size:13px;">
+            If you ran into any issues, reply to this email and our support
+            team will help you get it sorted.
+        </div>
+    </div>
+    {_signature_html()}
+    {_footer_html(user.email)}
+    """
+    return send_email(user.email, "Don't miss out — complete your deposit", _wrap(body))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # User: withdrawal confirmation
 # ─────────────────────────────────────────────────────────────────────────────
 

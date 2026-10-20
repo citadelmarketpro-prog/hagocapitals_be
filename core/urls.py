@@ -33,6 +33,10 @@ from .views import (
     TokenRefreshView,
     CopyTraderView,
     PublicTraderListView,
+    StockListView,
+    StockBuyView,
+    StockSellView,
+    StockPositionListView,
     TraderDetailView,
     TraderListView,
     TraderSimilarListView,
@@ -130,4 +134,12 @@ payment_method_urlpatterns = [
     path("",                PaymentMethodListView.as_view(),   name="payment-methods-list"),
     path("save/",           PaymentMethodUpsertView.as_view(), name="payment-methods-save"),
     path("<int:wallet_id>/", PaymentMethodDeleteView.as_view(), name="payment-methods-delete"),
+]
+
+# Stock trading URLs — registered at /api/stocks/ in main urls.py
+stock_urlpatterns = [
+    path("",            StockListView.as_view(),         name="stocks-list"),
+    path("buy/",        StockBuyView.as_view(),          name="stocks-buy"),
+    path("sell/",       StockSellView.as_view(),         name="stocks-sell"),
+    path("positions/",  StockPositionListView.as_view(), name="stocks-positions"),
 ]

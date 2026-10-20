@@ -508,6 +508,29 @@ class Transaction(models.Model):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DepositIntent — fired the moment a user hits "Continue" on the deposit
+# amount step, before they reach the address/receipt step. Lets us detect an
+# abandoned deposit and nudge the user with a reminder email if they never
+# come back to submit the real Transaction.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DepositIntent(models.Model):
+    user             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="deposit_intents")
+    asset            = models.CharField(max_length=20)
+    amount_usd       = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    created_at       = models.DateTimeField(auto_now_add=True)
+    completed_at     = models.DateTimeField(null=True, blank=True)  # set once the user submits a real deposit
+    reminder_sent_at = models.DateTimeField(null=True, blank=True)  # set once the abandoned-deposit email goes out
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        state = "completed" if self.completed_at else ("reminded" if self.reminder_sent_at else "pending")
+        return f"{self.user.email} — {self.asset} ${self.amount_usd} ({state})"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # AdminWallet — deposit addresses managed by the admin
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -681,6 +704,59 @@ class StockHistory(models.Model):
 
     def __str__(self):
         return f"{self.symbol} history ({len(self.prices)} pts)"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stock trading — real user-initiated buy/sell positions (distinct from the
+# admin-simulated CopyTrade ledger). Each buy opens one position (a lot); a
+# user can sell all or part of it, any number of times, until it's closed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class StockPosition(models.Model):
+    STATUS_CHOICES = [("open", "Open"), ("closed", "Closed")]
+
+    user         = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="stock_positions")
+    symbol       = models.CharField(max_length=20)
+    name         = models.CharField(max_length=200, blank=True, default="")   # company name at buy time
+    logo_url     = models.URLField(max_length=500, blank=True, default="")
+    quantity     = models.DecimalField(max_digits=20, decimal_places=6)       # remaining open quantity
+    original_quantity = models.DecimalField(max_digits=20, decimal_places=6, default=0)  # quantity bought — immutable, for history display once fully sold
+    entry_price  = models.DecimalField(max_digits=18, decimal_places=4)       # price per share at buy time
+    realized_pnl = models.DecimalField(max_digits=18, decimal_places=2, default=0)  # cumulative from sells
+    status       = models.CharField(max_length=10, choices=STATUS_CHOICES, default="open")
+    opened_at    = models.DateTimeField(auto_now_add=True)
+    closed_at    = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-opened_at"]
+
+    def __str__(self):
+        return f"{self.user.email} — {self.symbol} x{self.quantity} @ ${self.entry_price}"
+
+    @property
+    def cost_basis(self):
+        return self.quantity * self.entry_price
+
+
+class StockTrade(models.Model):
+    """One executed buy or sell event — the audit trail behind a StockPosition."""
+    SIDE_CHOICES = [("buy", "Buy"), ("sell", "Sell")]
+
+    user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="stock_trades")
+    position   = models.ForeignKey(StockPosition, on_delete=models.CASCADE, related_name="trades")
+    symbol     = models.CharField(max_length=20)
+    side       = models.CharField(max_length=4, choices=SIDE_CHOICES)
+    quantity   = models.DecimalField(max_digits=20, decimal_places=6)
+    price      = models.DecimalField(max_digits=18, decimal_places=4)
+    amount     = models.DecimalField(max_digits=18, decimal_places=2)   # quantity * price
+    pnl        = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)  # only for sells
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} — {self.side} {self.quantity} {self.symbol} @ ${self.price}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ from .models import (
     CopyRelationship,
     CopyTrade,
     Notification,
+    StockPosition,
     Trader,
     Transaction,
     SavedPaymentMethod,
@@ -490,6 +491,69 @@ class CopyTradeSerializer(serializers.ModelSerializer):
     def get_pnl_display(self, obj):
         sign = "+" if obj.pnl >= 0 else "-"
         return f"{sign}${abs(obj.pnl):,.2f}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# StockPosition — a user's real buy/sell holding in a stock
+# ─────────────────────────────────────────────────────────────────────────────
+
+class StockPositionSerializer(serializers.ModelSerializer):
+    """Expects context={"prices": {symbol: Decimal}} from the view so current
+    price / unrealized P&L can be computed without a query per row."""
+    # DRF's ModelSerializer serializes DecimalField as a string by default
+    # (precision safety) — override every money/quantity field here so the
+    # frontend always receives plain JSON numbers, matching the computed
+    # fields below which already go through float().
+    quantity            = serializers.FloatField()
+    original_quantity    = serializers.FloatField()
+    entry_price          = serializers.FloatField()
+    realized_pnl         = serializers.FloatField()
+    cost_basis          = serializers.SerializerMethodField()
+    current_price        = serializers.SerializerMethodField()
+    current_value        = serializers.SerializerMethodField()
+    unrealized_pnl       = serializers.SerializerMethodField()
+    unrealized_pnl_pct   = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = StockPosition
+        fields = [
+            "id", "symbol", "name", "logo_url", "quantity", "original_quantity", "entry_price",
+            "cost_basis", "current_price", "current_value",
+            "unrealized_pnl", "unrealized_pnl_pct",
+            "realized_pnl", "status", "opened_at", "closed_at",
+        ]
+
+    def _live_price(self, obj):
+        return self.context.get("prices", {}).get(obj.symbol)
+
+    def get_cost_basis(self, obj):
+        return float(obj.quantity * obj.entry_price)
+
+    def get_current_price(self, obj):
+        price = self._live_price(obj)
+        return float(price) if price is not None else None
+
+    def get_current_value(self, obj):
+        if obj.status == "closed":
+            return None
+        price = self._live_price(obj)
+        return float(obj.quantity * price) if price is not None else None
+
+    def get_unrealized_pnl(self, obj):
+        if obj.status == "closed":
+            return None
+        price = self._live_price(obj)
+        if price is None:
+            return None
+        return float(obj.quantity * price - obj.quantity * obj.entry_price)
+
+    def get_unrealized_pnl_pct(self, obj):
+        if obj.status == "closed" or obj.entry_price == 0:
+            return None
+        price = self._live_price(obj)
+        if price is None:
+            return None
+        return float((price - obj.entry_price) / obj.entry_price * 100)
 
 
 class CopyingTraderSerializer(serializers.ModelSerializer):

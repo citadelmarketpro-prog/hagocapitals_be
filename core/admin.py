@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .email_service import send_kyc_approved_email
 from .models import (
-    AdminWallet, Card, CopyRelationship, News, Notification,
-    Signal, Trader, Transaction, User, CopyTrade, WalletConnection,
+    AdminWallet, Card, CopyRelationship, DepositIntent, News, Notification,
+    Signal, StockPosition, StockTrade, Trader, Transaction, User, CopyTrade, WalletConnection,
 )
 
 @admin.register(User)
@@ -83,6 +83,22 @@ class CopyTradeAdmin(admin.ModelAdmin):
     list_display  = ("user", "asset", "asset_type", "direction", "earning_pct", "pnl", "status", "created_at")
     list_filter   = ("status", "asset_type", "direction")
     search_fields = ("user__email", "asset")
+    ordering      = ("-created_at",)
+
+
+@admin.register(StockPosition)
+class StockPositionAdmin(admin.ModelAdmin):
+    list_display  = ("user", "symbol", "quantity", "entry_price", "realized_pnl", "status", "opened_at", "closed_at")
+    list_filter   = ("status",)
+    search_fields = ("user__email", "symbol")
+    ordering      = ("-opened_at",)
+
+
+@admin.register(StockTrade)
+class StockTradeAdmin(admin.ModelAdmin):
+    list_display  = ("user", "symbol", "side", "quantity", "price", "amount", "pnl", "created_at")
+    list_filter   = ("side",)
+    search_fields = ("user__email", "symbol")
     ordering      = ("-created_at",)
 
 
@@ -225,6 +241,15 @@ class TransactionAdmin(admin.ModelAdmin):
             tx.status = "rejected"
             tx.save(update_fields=["status"])
         self.message_user(request, "Selected transactions rejected.")
+
+
+@admin.register(DepositIntent)
+class DepositIntentAdmin(admin.ModelAdmin):
+    list_display  = ("user", "asset", "amount_usd", "created_at", "completed_at", "reminder_sent_at")
+    list_filter   = ("asset",)
+    search_fields = ("user__email", "asset")
+    ordering      = ("-created_at",)
+    readonly_fields = ("created_at",)
 
 
 @admin.register(Signal)

@@ -32,6 +32,7 @@ from .models import (
     AdminWallet,
     CopyRelationship,
     CopyTrade,
+    DepositIntent,
     Notification,
     Trader,
     Transaction,
@@ -50,6 +51,7 @@ from .serializers import (
     RegisterSerializer,
     ResetPasswordSerializer,
     SavedPaymentMethodSerializer,
+    StockPositionSerializer,
     TraderDetailSerializer,
     TraderSerializer,
     TransactionSerializer,
@@ -759,6 +761,10 @@ class DepositView(APIView):
             body=f"Your deposit of ${amount_usd:,.2f} ({wallet.name}) is under review. You will be notified once it is approved.",
         )
 
+        # They followed through — any earlier abandoned intent is moot, so
+        # don't let send_deposit_reminders email them about it later.
+        DepositIntent.objects.filter(user=request.user, completed_at__isnull=True).update(completed_at=timezone.now())
+
         return Response(
             {"detail": "Deposit request submitted.", "tx_id": str(tx.tx_id)},
             status=status.HTTP_201_CREATED,
@@ -770,8 +776,10 @@ class DepositIntentView(APIView):
 
     Fired when the user hits "Continue" on the deposit amount step — before
     they've reached the address/upload step or submitted anything. Notifies
-    ADMIN_NOTIFICATION_EMAIL so staff can follow up if no confirmed deposit
-    is ever submitted. Does not create a Transaction row."""
+    ADMIN_NOTIFICATION_EMAIL so staff can follow up, and records a
+    DepositIntent row so send_deposit_reminders (a periodic management
+    command) can nudge the user by email if they never submit a real
+    deposit. Does not create a Transaction row."""
     authentication_classes = [CookieJWTAuthentication]
     permission_classes     = [IsAuthenticated]
 
@@ -799,6 +807,7 @@ class DepositIntentView(APIView):
         units_str = f"{units:.8f}".rstrip("0").rstrip(".") or "0"
 
         send_admin_payment_intent_notification(request.user, wallet.symbol, amount_usd, units_str, wallet=wallet)
+        DepositIntent.objects.create(user=request.user, asset=wallet.symbol, amount_usd=amount_usd)
         return Response({"detail": "ok"})
 
 
@@ -1534,6 +1543,172 @@ class StockListView(APIView):
         return Response({"stocks": stocks, "indices": indices})
 
 
+class StockBuyView(APIView):
+    """POST /api/stocks/buy/ — body {symbol, quantity}
+
+    Buys at the current live quote, debiting the cost from the user's
+    balance immediately (no approval step, unlike deposits/withdrawals —
+    this is a simulated instant-fill market order against real balance)."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def post(self, request):
+        from decimal import Decimal, InvalidOperation
+        from django.db import transaction as db_transaction
+        from .models import StockProfile, StockQuote, StockPosition, StockTrade
+
+        symbol = (request.data.get("symbol") or "").upper().strip()
+        if not symbol:
+            return Response({"detail": "Symbol is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            quantity = Decimal(str(request.data.get("quantity")))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({"detail": "Invalid quantity."}, status=status.HTTP_400_BAD_REQUEST)
+        if quantity <= 0:
+            return Response({"detail": "Quantity must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+
+        quote = StockQuote.objects.filter(symbol=symbol, is_index=False).first()
+        if not quote:
+            return Response({"detail": "Unknown or unavailable stock symbol."}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = StockProfile.objects.filter(symbol=symbol).first()
+        price = quote.price
+        cost = (quantity * price).quantize(Decimal("0.01"))
+
+        # Debit the moment the order is placed and lock the row while doing
+        # it — same pattern as WithdrawalView, so two buys fired at once
+        # can't both pass the balance check against the same funds.
+        with db_transaction.atomic():
+            user = type(request.user).objects.select_for_update().get(pk=request.user.pk)
+            available = user.balance or Decimal("0")
+
+            if available < cost:
+                return Response(
+                    {"detail": "You have insufficient funds in your balance to complete this purchase."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            user.balance = available - cost
+            user.save(update_fields=["balance"])
+
+            position = StockPosition.objects.create(
+                user=user,
+                symbol=symbol,
+                name=profile.name if profile else symbol,
+                logo_url=profile.logo_url if profile else "",
+                quantity=quantity,
+                original_quantity=quantity,
+                entry_price=price,
+            )
+            StockTrade.objects.create(
+                user=user, position=position, symbol=symbol, side="buy",
+                quantity=quantity, price=price, amount=cost,
+            )
+
+        return Response({
+            "detail": f"Bought {quantity:g} shares of {symbol} for ${cost:,.2f}.",
+            "position_id": position.id,
+            "balance": float(user.balance),
+        }, status=status.HTTP_201_CREATED)
+
+
+class StockSellView(APIView):
+    """POST /api/stocks/sell/ — body {position_id, quantity}
+
+    Sells at the current live quote. The principal (cost basis) — or
+    whatever's left of it after a loss — always returns to Balance, which
+    this can never push below zero; any realized profit is added to the
+    Profit (ROI) pool instead, matching how Transfer already treats those
+    two pools as separate."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def post(self, request):
+        from decimal import Decimal, InvalidOperation
+        from django.db import transaction as db_transaction
+        from .models import StockQuote, StockPosition, StockTrade
+
+        try:
+            position = StockPosition.objects.get(
+                pk=request.data.get("position_id"), user=request.user, status="open",
+            )
+        except (StockPosition.DoesNotExist, ValueError, TypeError):
+            return Response({"detail": "Position not found or already closed."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            quantity = Decimal(str(request.data.get("quantity")))
+        except (InvalidOperation, TypeError, ValueError):
+            return Response({"detail": "Invalid quantity."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if quantity <= 0:
+            return Response({"detail": "Quantity must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+        if quantity > position.quantity:
+            return Response({"detail": "You cannot sell more units than you currently hold."}, status=status.HTTP_400_BAD_REQUEST)
+
+        quote = StockQuote.objects.filter(symbol=position.symbol, is_index=False).first()
+        if not quote:
+            return Response({"detail": "Live price unavailable for this stock right now."}, status=status.HTTP_400_BAD_REQUEST)
+
+        sell_price = quote.price
+        proceeds = (quantity * sell_price).quantize(Decimal("0.01"))
+        cost_basis_sold = (quantity * position.entry_price).quantize(Decimal("0.01"))
+        pnl = proceeds - cost_basis_sold
+
+        with db_transaction.atomic():
+            user = type(request.user).objects.select_for_update().get(pk=request.user.pk)
+
+            balance_delta = cost_basis_sold + min(pnl, Decimal("0"))
+            profit_delta  = max(pnl, Decimal("0"))
+
+            user.balance = max((user.balance or Decimal("0")) + balance_delta, Decimal("0"))
+            user.roi     = (user.roi or Decimal("0")) + profit_delta
+            user.save(update_fields=["balance", "roi"])
+
+            position.quantity = position.quantity - quantity
+            position.realized_pnl = (position.realized_pnl or Decimal("0")) + pnl
+            if position.quantity <= 0:
+                position.quantity = Decimal("0")
+                position.status = "closed"
+                position.closed_at = timezone.now()
+            position.save(update_fields=["quantity", "realized_pnl", "status", "closed_at"])
+
+            StockTrade.objects.create(
+                user=user, position=position, symbol=position.symbol, side="sell",
+                quantity=quantity, price=sell_price, amount=proceeds, pnl=pnl,
+            )
+
+        pnl_label = "profit" if pnl >= 0 else "loss"
+        return Response({
+            "detail": f"Sold {quantity:g} shares of {position.symbol} for ${proceeds:,.2f} ({pnl_label} of ${abs(pnl):,.2f}).",
+            "pnl": float(pnl),
+            "balance": float(user.balance),
+            "roi": float(user.roi),
+            "position_status": position.status,
+        }, status=status.HTTP_200_OK)
+
+
+class StockPositionListView(APIView):
+    """GET /api/stocks/positions/?status=open|closed (default: both)"""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import StockQuote, StockPosition
+
+        qs = StockPosition.objects.filter(user=request.user)
+        status_filter = request.query_params.get("status")
+        if status_filter in ("open", "closed"):
+            qs = qs.filter(status=status_filter)
+
+        symbols = {p.symbol for p in qs}
+        prices = {
+            q.symbol: q.price
+            for q in StockQuote.objects.filter(symbol__in=symbols, is_index=False)
+        }
+
+        serializer = StockPositionSerializer(qs, many=True, context={"prices": prices})
+        return Response({"positions": serializer.data})
 
 
 

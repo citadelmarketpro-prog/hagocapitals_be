@@ -3,8 +3,8 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from core.urls import dashboard_urlpatterns, trader_urlpatterns, transaction_urlpatterns, transfer_urlpatterns, payment_method_urlpatterns, wallet_urlpatterns
-from core.views import ClearSessionView, CryptoPriceListView, NewsListView, StockListView, SyncTriggerView
+from core.urls import dashboard_urlpatterns, trader_urlpatterns, transaction_urlpatterns, transfer_urlpatterns, payment_method_urlpatterns, wallet_urlpatterns, stock_urlpatterns
+from core.views import ClearSessionView, CryptoPriceListView, NewsListView, SyncTriggerView
 
 urlpatterns = [
     path("",                          RedirectView.as_view(url="/panel/", permanent=False)),
@@ -18,7 +18,7 @@ urlpatterns = [
     path("api/payment-methods/",     include(payment_method_urlpatterns)),
     path("api/wallets/",             include(wallet_urlpatterns)),
     path("api/news/",                NewsListView.as_view(),             name="news-list"),
-    path("api/stocks/",             StockListView.as_view(),            name="stock-list"),
+    path("api/stocks/",             include(stock_urlpatterns)),
     path("api/crypto-prices/",      CryptoPriceListView.as_view(),      name="crypto-prices"),
     path("api/sync/<str:sync_type>/", SyncTriggerView.as_view(),        name="sync-trigger"),
     path("panel/",                   include("dashboard.urls", namespace="panel")),
