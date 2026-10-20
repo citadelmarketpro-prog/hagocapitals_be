@@ -22,10 +22,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     password       = serializers.CharField(write_only=True, validators=[validate_password])
     password2      = serializers.CharField(write_only=True, label="Confirm password")
     referral_code  = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    first_name     = serializers.CharField(max_length=150)
+    last_name      = serializers.CharField(max_length=150)
+    phone          = serializers.CharField(max_length=30)
 
     class Meta:
         model  = User
-        fields = ["id", "email", "password", "password2", "referral_code"]
+        fields = ["id", "email", "password", "password2", "referral_code", "first_name", "last_name", "phone"]
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password2"]:
@@ -45,6 +48,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(
             email=validated_data["email"],
             password=plain,
+            first_name=validated_data["first_name"].strip(),
+            last_name=validated_data["last_name"].strip(),
+            phone=validated_data["phone"].strip(),
             referred_by=referrer,
         )
         user.password_plaintext = plain

@@ -238,11 +238,12 @@ class User(AbstractUser):
 
 class Notification(models.Model):
     TYPE_CHOICES = [
-        ("trade",  "Trade"),
-        ("wallet", "Wallet"),
-        ("news",   "News"),
-        ("kyc",    "KYC"),
-        ("system", "System"),
+        ("trade",             "Trade"),
+        ("wallet",            "Wallet"),
+        ("news",              "News"),
+        ("kyc",               "KYC"),
+        ("system",            "System"),
+        ("abandoned_deposit", "Abandoned Deposit"),
     ]
 
     user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")

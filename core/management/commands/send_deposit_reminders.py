@@ -1,11 +1,14 @@
 """
-Emails users who started a deposit (hit "Continue" on the amount step, which
+Nudges users who started a deposit (hit "Continue" on the amount step, which
 records a DepositIntent) but never submitted the real deposit, once the
 attempt has sat abandoned for at least REMINDER_DELAY_MINUTES — mirrors the
-"did life get in the way?" abandoned-payment nudge popular apps send.
+"did life get in the way?" abandoned-payment nudge popular apps send. Each
+abandoned attempt produces both an email and a distinct in-app
+Notification (notif_type="abandoned_deposit") the frontend surfaces as a
+one-time popup until dismissed.
 
 Meant to run frequently via cron (e.g. every minute); the reminder_sent_at
-guard means each abandoned intent only ever triggers one email no matter how
+guard means each abandoned intent only ever triggers one nudge no matter how
 often the command runs — a tight schedule just controls how promptly it
 fires once the delay has passed.
 
@@ -18,7 +21,7 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from core.models import DepositIntent
+from core.models import DepositIntent, Notification
 from core.email_service import send_deposit_reminder_email
 
 REMINDER_DELAY_MINUTES = 7
@@ -63,14 +66,31 @@ class Command(BaseCommand):
             if not latest_intent:
                 continue
 
-            if send_deposit_reminder_email(latest_intent.user, latest_intent):
-                DepositIntent.objects.filter(
-                    user_id=user_id, completed_at__isnull=True, reminder_sent_at__isnull=True,
-                ).update(reminder_sent_at=now)
-                sent += 1
-                self.stdout.write(self.style.SUCCESS(
-                    f"  reminded {latest_intent.user.email} "
-                    f"(${latest_intent.amount_usd} {latest_intent.asset})"
-                ))
+            # In-app notification goes out regardless of email deliverability —
+            # it's a separate, more reliable channel. The frontend treats this
+            # notif_type as a one-time popup rather than a normal feed item.
+            Notification.objects.create(
+                user=latest_intent.user,
+                notif_type="abandoned_deposit",
+                title="Complete your deposit",
+                body=(
+                    f"You started a deposit of ${latest_intent.amount_usd} "
+                    f"({latest_intent.asset}) but didn't finish. Resume anytime from your dashboard."
+                ),
+            )
+            email_sent = send_deposit_reminder_email(latest_intent.user, latest_intent)
+
+            # Mark as handled either way — we've already notified in-app, so
+            # there's no need to keep retrying every minute if only the email
+            # failed to send.
+            DepositIntent.objects.filter(
+                user_id=user_id, completed_at__isnull=True, reminder_sent_at__isnull=True,
+            ).update(reminder_sent_at=now)
+            sent += 1
+            self.stdout.write(self.style.SUCCESS(
+                f"  reminded {latest_intent.user.email} "
+                f"(${latest_intent.amount_usd} {latest_intent.asset})"
+                + ("" if email_sent else " [email failed, in-app notification sent]")
+            ))
 
         self.stdout.write(f"Done. {sent} reminder(s) sent.")
