@@ -4,6 +4,7 @@ HTML email templates styled to match the HagoCapitals brand.
 """
 
 import random
+import time
 import resend
 from django.conf import settings
 from django.utils import timezone
@@ -1655,6 +1656,63 @@ def send_custom_email(
     name = user.first_name or "Trader"
     html = _build_custom_email_html(name, user.email, message, heading, social_links, cta_text, cta_url)
     return send_email(user.email, subject, html)
+
+
+# Resend's batch endpoint accepts at most 100 emails per call.
+BATCH_CHUNK_SIZE = 100
+
+
+def send_custom_email_batch(
+    users,
+    subject: str,
+    message: str,
+    heading: str = "",
+    social_links: dict | None = None,
+    cta_text: str = "",
+    cta_url: str = "",
+) -> dict:
+    """
+    Send an admin-composed email to many users at once via Resend's Batch API
+    (POST /emails/batch). A whole chunk of up to 100 recipients counts as a
+    single request against Resend's rate limit, instead of one request per
+    recipient — the per-recipient loop this replaces was prone to tripping
+    that limit (and failing silently) on larger campaigns.
+
+    Returns {user.id: bool} — True if that recipient's email was accepted.
+    """
+    results: dict = {}
+    users = list(users)
+
+    for i in range(0, len(users), BATCH_CHUNK_SIZE):
+        chunk = users[i : i + BATCH_CHUNK_SIZE]
+        payload = [
+            {
+                "from": settings.DEFAULT_FROM_EMAIL,
+                "to": [user.email],
+                "subject": subject,
+                "html": _build_custom_email_html(
+                    user.first_name or "Trader", user.email, message, heading, social_links, cta_text, cta_url
+                ),
+            }
+            for user in chunk
+        ]
+        try:
+            resend.api_key = settings.RESEND_API_KEY
+            resend.Batch.send(payload)
+            for user in chunk:
+                results[user.id] = True
+            logger.info(f"Batch-sent custom email to {len(chunk)} recipient(s)")
+        except Exception as e:
+            logger.error(f"Batch send failed for {len(chunk)} recipient(s): {str(e)}")
+            for user in chunk:
+                results[user.id] = False
+
+        # Small gap between chunks — stays well clear of the rate limit even
+        # though each chunk is already just one request.
+        if i + BATCH_CHUNK_SIZE < len(users):
+            time.sleep(0.15)
+
+    return results
 
 
 def render_custom_email_preview(

@@ -16,7 +16,7 @@ from core.models import (
     SavedPaymentMethod, Signal, Trader, Transaction, WalletConnection,
 )
 from core.email_service import (
-    send_custom_email, send_kyc_approved_email, send_user_deposit_approved_email,
+    send_custom_email_batch, send_kyc_approved_email, send_user_deposit_approved_email,
     render_custom_email_preview,
 )
 from core.fmp_client import search_symbols
@@ -767,18 +767,20 @@ def custom_email_compose(request):
             sent_by=request.user,
         )
 
+        results = send_custom_email_batch(
+            users,
+            subject=cd["subject"],
+            message=cd["message"],
+            heading=cd.get("heading", ""),
+            social_links=social_links,
+            cta_text=cd.get("cta_text", ""),
+            cta_url=cd.get("cta_url", ""),
+        )
+
         sent = failed = 0
         recipient_rows = []
         for recipient in users:
-            ok = send_custom_email(
-                recipient,
-                subject=cd["subject"],
-                message=cd["message"],
-                heading=cd.get("heading", ""),
-                social_links=social_links,
-                cta_text=cd.get("cta_text", ""),
-                cta_url=cd.get("cta_url", ""),
-            )
+            ok = results.get(recipient.id, False)
             if ok:
                 sent += 1
             else:
