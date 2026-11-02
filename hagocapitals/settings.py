@@ -144,6 +144,9 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "register": "5/hour",
+    },
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

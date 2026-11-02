@@ -17,6 +17,21 @@ from .models import (
 
 User = get_user_model()
 
+# Disposable/throwaway email providers commonly used by signup bots — blocked
+# at registration since a real user has no reason to use one on a trading
+# platform that needs to email KYC/deposit/withdrawal notices.
+DISPOSABLE_EMAIL_DOMAINS = {
+    "mail.tm", "fldubai.com", "maxxspace.com",
+    "tempmail.com", "temp-mail.org", "10minutemail.com", "guerrillamail.com",
+    "guerrillamail.info", "trashmail.com", "yopmail.com", "throwawaymail.com",
+    "getnada.com", "dispostable.com", "fakeinbox.com", "sharklasers.com",
+    "maildrop.cc", "mohmal.com", "moakt.cc", "emailondeck.com",
+    "mailinator.com", "mintemail.com", "mailnesia.com", "mailcatch.com",
+    "spamgourmet.com", "33mail.com", "tempinbox.com", "tempmailo.com",
+    "discard.email", "mailsac.com", "burnermail.io", "temp-mail.io",
+    "mail-temp.com", "tempail.com", "emailtemporario.com.br", "inboxbear.com",
+}
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password       = serializers.CharField(write_only=True, validators=[validate_password])
@@ -29,6 +44,12 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
         fields = ["id", "email", "password", "password2", "referral_code", "first_name", "last_name", "phone"]
+
+    def validate_email(self, value):
+        domain = value.rsplit("@", 1)[-1].strip().lower()
+        if domain in DISPOSABLE_EMAIL_DOMAINS:
+            raise serializers.ValidationError("Disposable email addresses are not allowed. Please use a permanent email address.")
+        return value
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password2"]:

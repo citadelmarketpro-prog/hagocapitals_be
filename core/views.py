@@ -15,6 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
 from .authentication import CookieJWTAuthentication
+from .throttles import RegisterRateThrottle
 from .email_service import (
     generate_verification_code,
     is_code_valid,
@@ -108,6 +109,7 @@ def _clear_auth_cookies(response: Response) -> None:
 class RegisterView(APIView):
     """POST /api/auth/register/"""
     permission_classes = [AllowAny]
+    throttle_classes = [RegisterRateThrottle]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
