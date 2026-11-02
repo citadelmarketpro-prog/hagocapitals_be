@@ -15,16 +15,21 @@
   </form>
 </div>
 
+{% url 'panel:bulk_delete_traders' as bulk_delete_url %}
+{% include "panel/_bulk_delete.html" with bulk_storage_key="hc_bulk_traders" bulk_delete_url=bulk_delete_url bulk_item_label="traders" %}
+
 <div class="panel-card">
   {% if page_obj.object_list %}
   <div class="table-wrapper">
   <table class="data-table">
     <thead><tr>
+      <th style="width:32px;"><input type="checkbox" id="bulk-select-all"></th>
       <th>Trader</th><th>Category</th><th>Gain</th><th>Copiers</th><th>Risk</th><th>Min Capital</th><th>Actions</th>
     </tr></thead>
     <tbody>
     {% for t in page_obj %}
     <tr>
+      <td><input type="checkbox" class="bulk-row-check" value="{{ t.pk }}"></td>
       <td>
         <div class="flex items-center gap-3">
           {% if t.avatar %}<img src="{{ t.avatar.url }}" class="w-9 h-9 rounded-full object-cover" />

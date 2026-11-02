@@ -204,6 +204,20 @@ def user_adjust_funds(request, pk):
         return redirect("panel:user_detail", pk=pk)
     return render(request, "panel/users/adjust_funds.html", {"form": form, "obj": obj})
 
+
+@superuser_required
+def bulk_delete_users(request):
+    """Delete a set of regular users by id, picked via checkboxes on the
+    users list page. Superuser accounts are excluded as a safety net so an
+    admin can't accidentally delete themselves or another admin."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+    ids = request.POST.getlist("ids")
+    if not ids:
+        return JsonResponse({"error": "No items selected"}, status=400)
+    deleted_count, _ = User.objects.filter(id__in=ids, is_superuser=False).delete()
+    return JsonResponse({"deleted": deleted_count})
+
 # ── Traders ───────────────────────────────────────────────────────────────────
 
 @superuser_required
@@ -290,6 +304,19 @@ def trader_disconnect_copier(request, pk, copier_pk):
     return redirect("panel:trader_detail", pk=pk)
 
 
+@superuser_required
+def bulk_delete_traders(request):
+    """Delete a set of Trader rows by id, picked via checkboxes on the
+    traders list page."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+    ids = request.POST.getlist("ids")
+    if not ids:
+        return JsonResponse({"error": "No items selected"}, status=400)
+    deleted_count, _ = Trader.objects.filter(id__in=ids).delete()
+    return JsonResponse({"deleted": deleted_count})
+
+
 # ── Transactions (Requests: Deposits / Withdrawals / All Transactions) ────────
 
 def _transaction_list_view(request, locked_type=None):
@@ -308,14 +335,17 @@ def _transaction_list_view(request, locked_type=None):
 
     if locked_type == "deposit":
         page_title, page_subtitle, list_url = "Deposits", "All incoming deposit requests", "panel:deposit_list"
+        bulk_storage_key = "hc_bulk_deposits"
     elif locked_type == "withdrawal":
         page_title, page_subtitle, list_url = "Withdrawals", "All outgoing withdrawal requests", "panel:withdrawal_list"
+        bulk_storage_key = "hc_bulk_withdrawals"
     else:
         page_title, page_subtitle, list_url = "All Transactions", "Every deposit and withdrawal", "panel:transaction_list"
+        bulk_storage_key = "hc_bulk_transactions"
 
     page = Paginator(qs, 30).get_page(request.GET.get("page"))
     return render(request, "panel/transactions/list.html", {
-        "page_obj": page, "q": q, "status_f": sf, "type_f": tf,
+        "page_obj": page, "q": q, "status_f": sf, "type_f": tf, "bulk_storage_key": bulk_storage_key,
         "status_choices": Transaction.STATUS_CHOICES, "type_choices": Transaction.TX_TYPE_CHOICES,
         "locked_type": locked_type, "page_title": page_title,
         "page_subtitle": page_subtitle, "list_url": list_url,
@@ -338,6 +368,20 @@ def deposit_list(request):
 def withdrawal_list(request):
     """Requests > Withdrawals — withdrawals only."""
     return _transaction_list_view(request, locked_type="withdrawal")
+
+
+@superuser_required
+def bulk_delete_transactions(request):
+    """Delete a set of Transaction rows by id. Shared by the deposits,
+    withdrawals, and all-transactions list pages, since all three just
+    show Transaction querysets filtered differently."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+    ids = request.POST.getlist("ids")
+    if not ids:
+        return JsonResponse({"error": "No items selected"}, status=400)
+    deleted_count, _ = Transaction.objects.filter(id__in=ids).delete()
+    return JsonResponse({"deleted": deleted_count})
 
 
 @superuser_required

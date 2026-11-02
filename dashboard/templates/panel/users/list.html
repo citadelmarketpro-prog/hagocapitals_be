@@ -27,16 +27,21 @@
   </form>
 </div>
 
+{% url 'panel:bulk_delete_users' as bulk_delete_url %}
+{% include "panel/_bulk_delete.html" with bulk_storage_key="hc_bulk_users" bulk_delete_url=bulk_delete_url bulk_item_label="users" %}
+
 <div class="panel-card">
   {% if page_obj.object_list %}
   <div class="table-wrapper">
   <table class="data-table">
     <thead><tr>
+      <th style="width:32px;"><input type="checkbox" id="bulk-select-all"></th>
       <th>Email</th><th>Name</th><th>KYC Status</th><th>Balance</th><th>Profit</th><th>Joined</th><th>Actions</th>
     </tr></thead>
     <tbody>
     {% for u in page_obj %}
     <tr>
+      <td><input type="checkbox" class="bulk-row-check" value="{{ u.pk }}"></td>
       <td>
         <a href="{% url 'panel:user_detail' u.pk %}" class="font-medium hover:underline" style="color:#6366f1;">{{ u.email }}</a>
         {% if not u.is_active %}<span class="badge badge-red ml-1">Inactive</span>{% endif %}

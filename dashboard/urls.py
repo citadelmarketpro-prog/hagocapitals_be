@@ -21,10 +21,12 @@ urlpatterns = [
     path("users/<int:pk>/approve-kyc/",         views.user_approve_kyc, name="user_approve_kyc"),
     path("users/<int:pk>/reject-kyc/",          views.user_reject_kyc,  name="user_reject_kyc"),
     path("users/<int:pk>/adjust-funds/",        views.user_adjust_funds,name="user_adjust_funds"),
+    path("users/bulk-delete/",                  views.bulk_delete_users, name="bulk_delete_users"),
 
     # Traders
     path("traders/",                                           views.trader_list,             name="trader_list"),
     path("traders/create/",                                    views.trader_create,           name="trader_create"),
+    path("traders/bulk-delete/",                               views.bulk_delete_traders,     name="bulk_delete_traders"),
     path("traders/<int:pk>/",                                  views.trader_detail,           name="trader_detail"),
     path("traders/<int:pk>/edit/",                             views.trader_edit,             name="trader_edit"),
     path("traders/<int:pk>/delete/",                           views.trader_delete,           name="trader_delete"),
@@ -33,6 +35,7 @@ urlpatterns = [
     # Requests: Deposits / Withdrawals / All Transactions
     path("requests/deposits/",           views.deposit_list,        name="deposit_list"),
     path("requests/withdrawals/",        views.withdrawal_list,     name="withdrawal_list"),
+    path("transactions/bulk-delete/",    views.bulk_delete_transactions, name="bulk_delete_transactions"),
     path("transactions/",                views.transaction_list,    name="transaction_list"),
     path("transactions/<int:pk>/",       views.transaction_detail,  name="transaction_detail"),
     path("transactions/<int:pk>/edit/",    views.transaction_edit,    name="transaction_edit"),
