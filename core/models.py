@@ -35,7 +35,7 @@ class UserManager(DjangoUserManager):
 
 class User(AbstractUser):
     """
-    Extended user model for HagoCapitals.
+    Extended user model for HagosCapital.
     Email-only — there is no username field.
     """
     username = None

@@ -385,7 +385,7 @@ _FC = "form-control"
 class FmpComboboxWidget(forms.Widget):
     """
     FMP-powered live asset search combobox for the admin panel.
-    Uses HagoCapitals's dark green theme. Shows logo + symbol + name.
+    Uses HagosCapital's dark green theme. Shows logo + symbol + name.
     """
 
     def render(self, name, value, attrs=None, renderer=None):

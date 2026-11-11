@@ -1,6 +1,6 @@
 {% extends "panel/base.html" %}
 {% load humanize %}
-{% block title %}Edit Transaction {{ obj.tx_id }} — HagoCapitals Admin{% endblock %}
+{% block title %}Edit Transaction {{ obj.tx_id }} — HagosCapital Admin{% endblock %}
 {% block heading %}Edit Transaction{% endblock %}
 {% block breadcrumb %}<a href="{% if obj.tx_type == 'deposit' %}{% url 'panel:deposit_list' %}{% else %}{% url 'panel:withdrawal_list' %}{% endif %}" style="color:#6366f1;">{% if obj.tx_type == 'deposit' %}Deposits{% else %}Withdrawals{% endif %}</a> / <a href="{% url 'panel:transaction_detail' obj.pk %}" style="color:#6366f1;">{{ obj.tx_id|truncatechars:16 }}…</a> / Edit{% endblock %}
 
