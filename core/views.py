@@ -394,11 +394,10 @@ class ForgotPasswordView(APIView):
     POST /api/auth/password/forgot/
     Body: { "email": "user@example.com" }
 
-    Always returns 200 to prevent email enumeration.
-    If the email exists a password-reset token is generated.
-    In production you would send this token via email; here we return it
-    in the response so the frontend can pass it straight to ResetPasswordView
-    (swap for an email task once SMTP is configured).
+    Checks whether the email is registered before sending anything. If it
+    isn't, responds with 404 so the frontend can tell the user directly
+    (intentional product choice — this app favors a clear error message
+    over hiding account existence).
     """
     permission_classes = [AllowAny]
 
@@ -408,19 +407,22 @@ class ForgotPasswordView(APIView):
 
         email = serializer.validated_data["email"]
         try:
-            user  = User.objects.get(email=email)
-            uid   = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
-            try:
-                send_password_reset_email(user, token=token, uid=uid)
-            except Exception:
-                pass
+            user = User.objects.get(email=email)
         except User.DoesNotExist:
-            pass  # do not reveal whether the email exists
+            return Response(
+                {"detail": "No account is registered with that email address."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        # Always the same response to prevent email enumeration
+        uid   = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        try:
+            send_password_reset_email(user, token=token, uid=uid)
+        except Exception:
+            pass
+
         return Response(
-            {"detail": "If that email is registered you will receive reset instructions shortly."},
+            {"detail": "Reset instructions have been sent to your email."},
             status=status.HTTP_200_OK,
         )
 
