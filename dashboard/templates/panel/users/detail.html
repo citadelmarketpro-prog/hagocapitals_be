@@ -196,12 +196,12 @@
       <div class="mb-4 text-sm">
         {% include "panel/users/_detail_row.html" with label="ID Type" value=obj.get_id_type_display %}
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="space-y-4">
         <div>
           <p class="text-xs mb-2" style="color:#94a3b8;">ID Front</p>
           {% if obj.id_front %}
             <a href="{{ obj.id_front.url }}" target="_blank">
-              <img src="{{ obj.id_front.url }}" class="w-full rounded object-cover" style="max-height:160px; border:1px solid #263353;" />
+              <img src="{{ obj.id_front.url }}" class="w-full rounded" style="border:1px solid #263353;" />
             </a>
           {% else %}
             <p class="text-sm" style="color:#475569;">Not uploaded</p>
@@ -211,7 +211,7 @@
           <p class="text-xs mb-2" style="color:#94a3b8;">ID Back</p>
           {% if obj.id_back %}
             <a href="{{ obj.id_back.url }}" target="_blank">
-              <img src="{{ obj.id_back.url }}" class="w-full rounded object-cover" style="max-height:160px; border:1px solid #263353;" />
+              <img src="{{ obj.id_back.url }}" class="w-full rounded" style="border:1px solid #263353;" />
             </a>
           {% else %}
             <p class="text-sm" style="color:#475569;">Not uploaded</p>
