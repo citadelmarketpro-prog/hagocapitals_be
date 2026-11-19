@@ -22,6 +22,10 @@ User = get_user_model()
 # platform that needs to email KYC/deposit/withdrawal notices.
 DISPOSABLE_EMAIL_DOMAINS = {
     "mail.tm", "fldubai.com", "maxxspace.com",
+    "mx-mailsrv.com", "euploading.com",
+    # RFC 2606 reserved domains — never owned by a real signup, only ever
+    # seen here from QA/bot scripts using @example.com-style addresses.
+    "example.com", "example.net", "example.org",
     "tempmail.com", "temp-mail.org", "10minutemail.com", "guerrillamail.com",
     "guerrillamail.info", "trashmail.com", "yopmail.com", "throwawaymail.com",
     "getnada.com", "dispostable.com", "fakeinbox.com", "sharklasers.com",

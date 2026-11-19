@@ -134,6 +134,17 @@ AUTHENTICATION_BACKENDS = [
 # Django REST Framework
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Shared across gunicorn worker processes (unlike the default LocMemCache,
+# which is per-process and would let a per-IP throttle like "register" below
+# be bypassed just by landing on a different worker) without requiring a
+# separate cache server such as Redis.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": BASE_DIR / "django_cache",
+    }
+}
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "core.authentication.CookieJWTAuthentication",
