@@ -1373,27 +1373,38 @@ class PortfolioChartView(APIView):
 
 class SyncTriggerView(APIView):
     """
-    POST /api/sync/news/
-    Protected by X-Sync-Secret header — called by an external cron service.
+    GET or POST /api/sync/<sync_type>/?secret=...
+    Called by an external cron-pinger service (e.g. cron-job.org) that just
+    hits a plain URL on a schedule. The secret can be sent either as a
+    ?secret= query param (for pingers that only let you configure a bare
+    URL) or as an X-Sync-Secret header (for ones that support custom
+    headers) — either is accepted.
     """
     authentication_classes = []
     permission_classes     = [AllowAny]
 
+    def get(self, request, sync_type):
+        return self._run(request, sync_type)
+
     def post(self, request, sync_type):
+        return self._run(request, sync_type)
+
+    def _run(self, request, sync_type):
         from decouple import config as _cfg
         from django.core.management import call_command
         from io import StringIO
 
-        secret   = request.headers.get("X-Sync-Secret", "")
+        secret   = request.headers.get("X-Sync-Secret", "") or request.query_params.get("secret", "")
         expected = _cfg("SYNC_SECRET", default="")
         if not expected or secret != expected:
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
         commands = {
-            "news":          "fetch_fmp_news",
-            "crypto":        "fetch_crypto_prices",
-            "stocks_quotes": "fetch_stock_quotes",
-            "stocks_data":   "fetch_stock_data",
+            "news":              "fetch_fmp_news",
+            "crypto":            "fetch_crypto_prices",
+            "stocks_quotes":     "fetch_stock_quotes",
+            "stocks_data":       "fetch_stock_data",
+            "deposit_reminders": "send_deposit_reminders",
         }
         cmd = commands.get(sync_type)
         if not cmd:
