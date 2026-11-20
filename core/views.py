@@ -1,6 +1,7 @@
 import types as _types
 from datetime import timedelta
 
+import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -102,6 +103,38 @@ def _clear_auth_cookies(response: Response) -> None:
     response.delete_cookie("refresh_token", path="/")
 
 
+def _client_ip(request) -> str:
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "")
+
+
+def _verify_turnstile(token: str, remote_ip: str) -> bool:
+    """Checks a Cloudflare Turnstile token server-side before letting a
+    registration through. TURNSTILE_SECRET_KEY unset (e.g. local dev without
+    the key configured) skips the check entirely rather than blocking every
+    signup. A Cloudflare outage/timeout fails OPEN — this guards against
+    signup spam, not account takeover, so a few bots slipping through during
+    a Cloudflare incident is a far better outcome than blocking every real
+    signup until it's back.
+    """
+    secret = getattr(settings, "TURNSTILE_SECRET_KEY", "")
+    if not secret:
+        return True
+    if not token:
+        return False
+    try:
+        resp = requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data={"secret": secret, "response": token, "remoteip": remote_ip},
+            timeout=5,
+        )
+        return bool(resp.json().get("success"))
+    except requests.RequestException:
+        return True
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Auth views
 # ─────────────────────────────────────────────────────────────────────────────
@@ -112,6 +145,11 @@ class RegisterView(APIView):
     throttle_classes = [RegisterRateThrottle]
 
     def post(self, request):
+        if not _verify_turnstile(request.data.get("turnstile_token", ""), _client_ip(request)):
+            return Response(
+                {"detail": "Captcha verification failed. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()

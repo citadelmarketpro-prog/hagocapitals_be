@@ -281,6 +281,7 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='HagosCapital <support
 ADMIN_NOTIFICATION_EMAIL = config('ADMIN_NOTIFICATION_EMAIL', default='support@hagoscapital.com')
 RESEND_API_KEY = config('RESEND_API_KEY', default='')
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
+TURNSTILE_SECRET_KEY = config('TURNSTILE_SECRET_KEY', default='')
 
 
 
