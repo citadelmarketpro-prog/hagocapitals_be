@@ -1,0 +1,70 @@
+{% extends "panel/base.html" %}
+{% block title %}Special Wallets — {{ obj.email }} — HagosCapital Admin{% endblock %}
+{% block heading %}Special Wallet Addresses{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:user_list' %}" style="color:#6366f1;">Users</a> / <a href="{% url 'panel:user_detail' obj.pk %}" style="color:#6366f1; word-break:break-all;">{{ obj.email }}</a> / Special Wallets{% endblock %}
+{% block header_actions %}<a href="{% url 'panel:user_wallet_create' obj.pk %}" class="btn btn-primary text-xs">+ Add Special Wallet</a>{% endblock %}
+
+{% block content %}
+<p class="text-sm mb-4" style="color:#94a3b8;">
+  Wallets added here are shown <strong style="color:#f8fafc;">only to {{ obj.email }}</strong> in the deposit modal and replace the general admin wallet for the same currency.
+</p>
+
+<div class="panel-card mb-6">
+  {% if wallets %}
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead><tr><th>Currency</th><th>Symbol</th><th>Network</th><th>Address</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for w in wallets %}
+    <tr>
+      <td>
+        <div class="flex items-center gap-3">
+          {% with icon_url=w.get_icon_url %}{% if icon_url %}<img src="{{ icon_url }}" class="w-7 h-7 rounded-full" style="background:#263353;" />{% endif %}{% endwith %}
+          <span class="font-medium" style="color:#f8fafc;">{{ w.get_name_display }}</span>
+        </div>
+      </td>
+      <td><span class="badge badge-gray">{{ w.symbol }}</span></td>
+      <td style="color:#94a3b8; font-size:13px;">{{ w.network }}</td>
+      <td><code class="text-xs font-mono" style="color:#94a3b8; word-break:break-all;">{{ w.address }}</code></td>
+      <td>{% if w.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red" title="Inactive: the user sees the general wallet">Inactive</span>{% endif %}</td>
+      <td>
+        <div class="flex gap-2">
+          <a href="{% url 'panel:user_wallet_edit' obj.pk w.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
+          <a href="{% url 'panel:user_wallet_delete' obj.pk w.pk %}" class="btn btn-danger" style="padding:4px 10px; font-size:11px;">Delete</a>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No special wallets yet — this user sees the general admin wallets. <a href="{% url 'panel:user_wallet_create' obj.pk %}" style="color:#6366f1;">Add one</a></p>
+  </div>
+  {% endif %}
+</div>
+
+<h3 class="text-sm font-semibold mb-3" style="color:#f8fafc;">What this user sees per currency</h3>
+<div class="panel-card">
+  <div class="table-wrapper">
+  <table class="data-table">
+    <thead><tr><th>Currency</th><th>General wallet address</th><th>Shown to user</th><th></th></tr></thead>
+    <tbody>
+    {% for g in general_wallets %}
+    <tr>
+      <td style="color:#f8fafc;">{{ g.get_name_display }}</td>
+      <td><code class="text-xs font-mono" style="color:#94a3b8; word-break:break-all;">{{ g.address }}</code></td>
+      <td>{% if g.name in overridden %}<span class="badge badge-blue">Special wallet</span>{% else %}<span class="badge badge-gray">General wallet</span>{% endif %}</td>
+      <td style="text-align:right; white-space:nowrap;">
+        {% if g.name not in overridden %}<a href="{% url 'panel:user_wallet_create' obj.pk %}?name={{ g.name }}" style="color:#6366f1;" class="text-xs font-semibold">Set special</a>{% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4" style="color:#94a3b8; text-align:center;">No active general admin wallets.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

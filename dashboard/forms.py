@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from django import forms
 from django.utils import timezone
 from django.utils.safestring import mark_safe
@@ -13,6 +14,7 @@ from core.models import (
     Signal,
     Trader,
     Transaction,
+    UserAdminWallet,
     WalletConnection,
 )
 
@@ -304,6 +306,30 @@ class AdminWalletForm(forms.ModelForm):
         # `icon` is intentionally excluded — it's auto-derived from `name`
         # (see AdminWallet.get_icon_url / WALLET_ICON_MAP), never uploaded.
         fields = ["name", "symbol", "network", "address", "qr_code", "is_active", "order"]
+
+
+class UserAdminWalletForm(forms.ModelForm):
+    """Special (per-user) deposit wallet — same fields as AdminWalletForm."""
+    class Meta:
+        model  = UserAdminWallet
+        fields = ["name", "symbol", "network", "address", "qr_code", "is_active", "order"]
+
+
+class AdminCreateDepositForm(forms.Form):
+    """Admin creates a pending deposit for a user, like the deposit modal.
+    `wallet_id` uses the same ids as the deposit API (negative = that user's
+    special wallet); the template fills its options per user via JSON."""
+    user       = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_superuser=False).order_by("email"),
+        empty_label="Select user",
+        widget=forms.Select(attrs={"class": "form-control", "id": "id_user"}),
+    )
+    wallet_id  = forms.IntegerField(widget=forms.Select(attrs={"class": "form-control", "id": "id_wallet_id"}))
+    amount_usd = forms.DecimalField(
+        max_digits=18, decimal_places=2, min_value=Decimal("0.01"),
+        widget=forms.NumberInput(attrs={"class": "form-control", "id": "id_amount_usd", "step": "0.01", "placeholder": "1000.00"}),
+    )
+    receipt    = forms.ImageField(required=False, widget=forms.FileInput(attrs={"class": "form-control", "accept": "image/*"}))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

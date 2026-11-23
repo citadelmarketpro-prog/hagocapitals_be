@@ -632,6 +632,56 @@ class AdminWallet(models.Model):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# UserAdminWallet — a deposit address the admin assigns to ONE user. Same
+# fields as AdminWallet. For that user it supersedes the general AdminWallet
+# of the same currency (`name`) in the deposit modal; other currencies still
+# fall back to AdminWallet. Exposed to the API with a NEGATIVE id (-pk) so it
+# can never collide with an AdminWallet id — see core.deposit_wallets.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class UserAdminWallet(models.Model):
+    user      = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="special_wallets")
+    name      = models.CharField(max_length=30, choices=AdminWallet.WALLET_TYPE_CHOICES)
+    symbol    = models.CharField(max_length=20, blank=True)
+    network   = models.CharField(max_length=100, blank=True, default="")
+    address   = models.CharField(max_length=500)
+    qr_code   = CloudinaryField(
+        "qr_code", folder="user_wallet_qr_codes", null=True, blank=True,
+        help_text="Optional. Leave blank to auto-generate a QR from the address.",
+    )
+    is_active = models.BooleanField(default=True, help_text="Inactive: the user sees the general wallet for this currency.")
+    order     = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "name"]
+        unique_together = [("user", "name")]
+        verbose_name = "User Admin Wallet"
+        verbose_name_plural = "User Admin Wallets"
+
+    def save(self, *args, **kwargs):
+        if self.name in AdminWallet.WALLET_DEFAULTS:
+            default_symbol, default_network = AdminWallet.WALLET_DEFAULTS[self.name]
+            if not self.symbol:
+                self.symbol = default_symbol
+            if not self.network:
+                self.network = default_network
+        super().save(*args, **kwargs)
+
+    def get_icon_url(self):
+        return AdminWallet.WALLET_ICON_MAP.get(self.name, "")
+
+    @property
+    def api_id(self):
+        """Id used by the deposit API — negative so it never clashes with AdminWallet ids."""
+        return -self.pk
+
+    def __str__(self):
+        return f"{self.user.email} · {self.get_name_display()} — {self.address[:30]}…"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CryptoPrice — live prices fetched from FMP, used to calculate deposit units
 # ─────────────────────────────────────────────────────────────────────────────
 

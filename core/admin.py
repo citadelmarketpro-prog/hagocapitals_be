@@ -4,7 +4,16 @@ from .email_service import send_kyc_approved_email
 from .models import (
     AdminWallet, Card, CopyRelationship, DepositIntent, News, Notification,
     Signal, StockPosition, StockTrade, Trader, Transaction, User, CopyTrade, WalletConnection,
+    UserAdminWallet,
 )
+
+
+@admin.register(UserAdminWallet)
+class UserAdminWalletAdmin(admin.ModelAdmin):
+    list_display  = ("user", "name", "symbol", "network", "address", "is_active", "updated_at")
+    list_filter   = ("name", "is_active")
+    search_fields = ("user__email", "address")
+    raw_id_fields = ("user",)
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):

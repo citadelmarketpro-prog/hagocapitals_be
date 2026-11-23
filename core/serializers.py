@@ -449,6 +449,9 @@ class TransactionSerializer(serializers.ModelSerializer):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class AdminWalletSerializer(serializers.ModelSerializer):
+    """Serializes AdminWallet and UserAdminWallet alike (same fields). A
+    user's special wallet gets a negative id — see core.deposit_wallets."""
+    id           = serializers.SerializerMethodField()
     name_display = serializers.CharField(source="get_name_display", read_only=True)
     icon_url     = serializers.SerializerMethodField()
     qr_code_url  = serializers.SerializerMethodField()
@@ -456,6 +459,10 @@ class AdminWalletSerializer(serializers.ModelSerializer):
     class Meta:
         model  = AdminWallet
         fields = ["id", "name", "name_display", "symbol", "network", "address", "icon_url", "qr_code_url"]
+
+    def get_id(self, obj):
+        from .deposit_wallets import wallet_api_id
+        return wallet_api_id(obj)
 
     def get_icon_url(self, obj):
         return obj.get_icon_url() or None
@@ -476,7 +483,11 @@ class DepositSerializer(serializers.Serializer):
     receipt    = serializers.ImageField(required=False, allow_null=True)
 
     def validate_wallet_id(self, value):
-        if not AdminWallet.objects.filter(pk=value, is_active=True).exists():
+        # Positive ids are general AdminWallets; negative ids are the
+        # requesting user's own special wallets (needs the request in context).
+        from .deposit_wallets import resolve_deposit_wallet
+        request = self.context.get("request")
+        if resolve_deposit_wallet(getattr(request, "user", None), value) is None:
             raise serializers.ValidationError("Invalid or inactive wallet.")
         return value
 

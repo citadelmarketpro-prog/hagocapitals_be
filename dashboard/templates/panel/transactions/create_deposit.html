@@ -1,0 +1,128 @@
+{% extends "panel/base.html" %}
+{% block title %}Create Deposit — HagosCapital Admin{% endblock %}
+{% block heading %}Create Deposit{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:deposit_list' %}" style="color:#6366f1;">Deposits</a> / Create{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <p class="text-sm mb-4" style="color:#94a3b8;">
+    Create a deposit on a user's behalf, exactly as if they had completed the deposit modal. It is saved as
+    <strong style="color:#f8fafc;">pending</strong>; you'll be taken to it next to approve or reject it.
+  </p>
+  <div class="panel-card p-6">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="mb-4 text-xs" style="color:#f87171;">{{ form.non_field_errors }}</div>{% endif %}
+
+      <div class="mb-5">
+        <label class="form-label">User *</label>
+        <input type="text" id="user-search" class="form-control mb-2" placeholder="Filter users by email…" autocomplete="off" />
+        {{ form.user }}
+        {% for e in form.user.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="mb-5">
+          <label class="form-label">Payment Method *</label>
+          <select name="wallet_id" id="id_wallet_id" class="form-control" required data-selected="{{ form.wallet_id.value|default:'' }}">
+            <option value="">Select payment method</option>
+          </select>
+          <p id="wallet-hint" class="text-xs mt-1" style="color:#94a3b8;">Select a user to load the payment methods they see.</p>
+          {% for e in form.wallet_id.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="mb-5">
+          <label class="form-label">Amount (USD) *</label>
+          {{ form.amount_usd }}
+          {% for e in form.amount_usd.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+
+      <!-- Live conversion preview (the server recomputes on submit) -->
+      <div id="conversion" class="mb-5 p-4 rounded" style="display:none; background:#131c2e; border:1px solid #263353;">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <div><p class="text-xs" style="color:#94a3b8;">Rate</p><p style="color:#f8fafc;" id="conv-rate">—</p></div>
+          <div><p class="text-xs" style="color:#94a3b8;">Credited on approval</p><p style="color:#f8fafc;">$<span id="conv-usd">0.00</span></p></div>
+          <div><p class="text-xs" style="color:#94a3b8;">Crypto units</p><p style="color:#a5b4fc; font-weight:600;"><span id="conv-units">0</span> <span id="conv-sym"></span></p></div>
+        </div>
+        <p class="text-xs mt-3" style="color:#94a3b8;">Address shown to this user <span id="conv-special" class="badge badge-blue" style="display:none;">special wallet</span></p>
+        <p id="conv-address" class="text-xs font-mono" style="color:#f8fafc; word-break:break-all;"></p>
+      </div>
+
+      <div class="mb-6">
+        <label class="form-label">Receipt (optional)</label>
+        {{ form.receipt }}
+        {% for e in form.receipt.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+      </div>
+
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">Create Pending Deposit</button>
+        <a href="{% url 'panel:deposit_list' %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const optionsUrl = "{% url 'panel:deposit_create_options' %}";
+  const userSel = document.getElementById("id_user");
+  const walletSel = document.getElementById("id_wallet_id");
+  const amountIn = document.getElementById("id_amount_usd");
+  const search = document.getElementById("user-search");
+  const hint = document.getElementById("wallet-hint");
+  const box = document.getElementById("conversion");
+  const $ = (id) => document.getElementById(id);
+  let wanted = walletSel.dataset.selected || "";
+  let wallets = {};
+
+  const allUsers = Array.from(userSel.options).map(o => ({ value: o.value, text: o.text }));
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase(), cur = userSel.value;
+    userSel.innerHTML = "";
+    allUsers.filter(u => !u.value || u.text.toLowerCase().includes(q) || u.value === cur)
+      .forEach(u => userSel.add(new Option(u.text, u.value, false, u.value === cur)));
+  });
+
+  function reset(msg) {
+    walletSel.innerHTML = ""; walletSel.add(new Option("Select payment method", ""));
+    hint.textContent = msg; wallets = {}; update();
+  }
+
+  async function load() {
+    if (!userSel.value) { reset("Select a user to load the payment methods they see."); return; }
+    reset("Loading payment methods…");
+    try {
+      const res = await fetch(optionsUrl + "?user=" + encodeURIComponent(userSel.value), { credentials: "same-origin" });
+      const data = await res.json();
+      if (!data.success || !data.wallets.length) { reset("This user has no active payment methods."); return; }
+      data.wallets.forEach(w => {
+        wallets[String(w.id)] = w;
+        walletSel.add(new Option(w.name_display + (w.network ? " (" + w.network + ")" : ""), w.id, false, String(w.id) === wanted));
+      });
+      if (!walletSel.value) walletSel.selectedIndex = 1;
+      hint.textContent = "Same methods, addresses and live rates this user sees in their deposit modal.";
+    } catch (e) { reset("Could not load payment methods — please retry."); }
+    update();
+  }
+
+  function update() {
+    const w = wallets[walletSel.value];
+    if (!w) { box.style.display = "none"; return; }
+    box.style.display = "";
+    const rate = w.rate ? parseFloat(w.rate) : null;
+    const usd = parseFloat(amountIn.value);
+    $("conv-rate").textContent = rate ? "$" + rate.toLocaleString(undefined, { maximumFractionDigits: 8 }) + " / " + w.symbol : "No live price — 1:1";
+    $("conv-usd").textContent = isNaN(usd) ? "0.00" : usd.toFixed(2);
+    $("conv-units").textContent = isNaN(usd) ? "0" : (rate ? (usd / rate).toFixed(8) : usd.toFixed(2));
+    $("conv-sym").textContent = w.symbol;
+    $("conv-address").textContent = w.address;
+    $("conv-special").style.display = w.is_special ? "" : "none";
+  }
+
+  userSel.addEventListener("change", () => { wanted = ""; load(); });
+  walletSel.addEventListener("change", () => { wanted = walletSel.value; update(); });
+  amountIn.addEventListener("input", update);
+  load();
+})();
+</script>
+{% endblock %}

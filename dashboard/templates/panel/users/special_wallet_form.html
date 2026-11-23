@@ -1,0 +1,77 @@
+{% extends "panel/base.html" %}
+{% block title %}{{ action }} Special Wallet — HagosCapital Admin{% endblock %}
+{% block heading %}{{ action }} Special Wallet{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:user_detail' user_obj.pk %}" style="color:#6366f1; word-break:break-all;">{{ user_obj.email }}</a> / <a href="{% url 'panel:user_wallet_list' user_obj.pk %}" style="color:#6366f1;">Special Wallets</a> / {{ action }}{% endblock %}
+
+{% block content %}
+<div class="max-w-md">
+  <p class="text-sm mb-4" style="color:#94a3b8;">For <strong style="color:#f8fafc;">{{ user_obj.email }}</strong> only — replaces the general wallet for this currency in their deposit modal.</p>
+  <div class="panel-card p-6">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if form.errors %}
+      <div class="mb-4 text-xs" style="color:#f87171;">
+        {% for field, errors in form.errors.items %}{% for e in errors %}<p>{{ e }}</p>{% endfor %}{% endfor %}
+      </div>
+      {% endif %}
+      <div class="mb-5">
+        <label class="form-label">Currency *</label>
+        <div class="flex items-center gap-3">
+          <img id="wallet-icon-preview" src="{% if obj %}{{ obj.get_icon_url }}{% endif %}"
+               class="w-10 h-10 rounded-full shrink-0" style="background:#263353; {% if not obj or not obj.get_icon_url %}display:none;{% endif %}" />
+          <select name="name" id="id_name" class="form-control" required>
+            {% for val, label in form.fields.name.choices %}<option value="{{ val }}" {% if form.name.value == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="mb-5">
+          <label class="form-label">Symbol</label>
+          <input type="text" name="symbol" value="{{ form.symbol.value|default:'' }}" class="form-control" placeholder="Auto from currency" />
+        </div>
+        <div class="mb-5">
+          <label class="form-label">Network</label>
+          <input type="text" name="network" value="{{ form.network.value|default:'' }}" class="form-control" placeholder="Auto from currency" />
+        </div>
+      </div>
+      <div class="mb-5">
+        <label class="form-label">Wallet Address *</label>
+        <input type="text" name="address" value="{{ form.address.value|default:'' }}" class="form-control" required placeholder="0x…" />
+      </div>
+      <div class="mb-5">
+        <label class="form-label">QR Code Image</label>
+        <input type="file" name="qr_code" class="form-control" accept="image/*" />
+        <p class="text-xs mt-1" style="color:#94a3b8;">Optional — leave blank and the deposit page auto-generates a QR from the address.</p>
+        {% if obj and obj.qr_code %}<p class="text-xs mt-1" style="color:#94a3b8;">Current: <a href="{{ obj.qr_code.url }}" target="_blank" style="color:#6366f1;">view</a></p>{% endif %}
+      </div>
+      <div class="mb-5">
+        <label class="form-label">Order</label>
+        <input type="number" name="order" value="{{ form.order.value|default:'0' }}" class="form-control" min="0" />
+      </div>
+      <div class="mb-6">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="is_active" {% if form.is_active.value or not obj and not form.is_bound %}checked{% endif %} style="accent-color:#6366f1; width:16px; height:16px;" />
+          <span class="text-sm" style="color:#f8fafc;">Active (shown to this user instead of the general wallet)</span>
+        </label>
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">{{ action }} Special Wallet</button>
+        <a href="{% url 'panel:user_wallet_list' user_obj.pk %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{{ icon_map|json_script:"wallet-icon-map" }}
+<script>
+  const WALLET_ICON_MAP = JSON.parse(document.getElementById("wallet-icon-map").textContent);
+  const nameSelect = document.getElementById("id_name");
+  const preview = document.getElementById("wallet-icon-preview");
+  function updateWalletIconPreview() {
+    const url = WALLET_ICON_MAP[nameSelect.value];
+    if (url) { preview.src = url; preview.style.display = ""; } else { preview.style.display = "none"; }
+  }
+  nameSelect.addEventListener("change", updateWalletIconPreview);
+  updateWalletIconPreview();
+</script>
+{% endblock %}

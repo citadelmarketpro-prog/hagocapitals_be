@@ -232,6 +232,13 @@
       Deposits
     </a>
 
+    <a href="{% url 'panel:deposit_create' %}" class="sidebar-link {% if request.resolver_match.url_name == 'deposit_create' %}active{% endif %}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+      </svg>
+      Create Deposit
+    </a>
+
     <a href="{% url 'panel:withdrawal_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'withdrawal_list' %}active{% endif %}">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>

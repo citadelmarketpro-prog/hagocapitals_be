@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 
 from core.models import (
     AdminWallet, Card, CopyRelationship, CopyTrade, Notification,
-    SavedPaymentMethod, Signal, Trader, Transaction, WalletConnection,
+    SavedPaymentMethod, Signal, Trader, Transaction, UserAdminWallet, WalletConnection,
 )
 from core.email_service import (
     send_custom_email_batch, send_kyc_approved_email, send_user_deposit_approved_email,
@@ -25,6 +25,7 @@ from .models import EmailCampaign, EmailCampaignRecipient
 from .trader_seed import seed_trader_demo_data
 from .forms import (
     AddTradeForm, AdminWalletForm, AdjustFundsForm, CardEditForm, CustomEmailForm,
+    UserAdminWalletForm, AdminCreateDepositForm,
     EditCopyTradeForm, NotificationForm, RejectKycForm, RejectTransactionForm, SetUserPasswordForm,
     SignalForm, TraderForm, TransactionEditForm, WalletConnectionForm,
     UserCreateForm, UserEditForm,
@@ -441,16 +442,23 @@ def transaction_edit(request, pk):
 @superuser_required
 @require_POST
 def transaction_approve(request, pk):
-    tx = get_object_or_404(Transaction, pk=pk)
-    if tx.status != "pending":
-        messages.error(request, "Only pending transactions can be approved.")
-        return redirect("panel:transaction_detail", pk=pk)
-    tx.status = "completed"
-    tx.save(update_fields=["status"])
-    user = tx.user
+    from django.db import transaction as db_transaction
+
+    get_object_or_404(Transaction, pk=pk)
+    # Lock the row and re-check inside the transaction so a double-click (or
+    # two admins at once) can't approve — and credit a deposit — twice.
+    with db_transaction.atomic():
+        tx = Transaction.objects.select_for_update().get(pk=pk)
+        if tx.status != "pending":
+            messages.error(request, "Only pending transactions can be approved.")
+            return redirect("panel:transaction_detail", pk=pk)
+        tx.status = "completed"
+        tx.save(update_fields=["status"])
+        user = User.objects.select_for_update().get(pk=tx.user_id)
+        if tx.tx_type == "deposit":
+            user.balance += tx.amount_usd
+            user.save(update_fields=["balance"])
     if tx.tx_type == "deposit":
-        user.balance += tx.amount_usd
-        user.save(update_fields=["balance"])
         Notification.objects.create(user=user, notif_type="wallet", title="Deposit Confirmed",
             body=f"Your deposit of ${tx.amount_usd:,.2f} ({tx.asset}) has been confirmed and added to your balance.")
         send_user_deposit_approved_email(user, tx)
@@ -544,6 +552,141 @@ def wallet_delete(request, pk):
         "warning": "This wallet will no longer be available for deposits.",
         "cancel_url": "/panel/wallets/",
     })
+
+
+# ── Special (per-user) wallets ────────────────────────────────────────────────
+# A user's UserAdminWallet supersedes the general AdminWallet of the same
+# currency in their deposit modal (see core.deposit_wallets).
+
+@superuser_required
+def user_wallet_list(request, pk):
+    obj = get_object_or_404(User, pk=pk)
+    wallets = obj.special_wallets.all().order_by("-is_active", "order", "name")
+    overridden = {w.name for w in wallets if w.is_active}
+    return render(request, "panel/users/special_wallets.html", {
+        "obj": obj, "wallets": wallets, "overridden": overridden,
+        "general_wallets": AdminWallet.objects.filter(is_active=True),
+    })
+
+
+@superuser_required
+def user_wallet_create(request, pk):
+    obj = get_object_or_404(User, pk=pk)
+    initial = {}
+    if request.method != "POST" and request.GET.get("name") in AdminWallet.WALLET_DEFAULTS:
+        initial["name"] = request.GET["name"]
+    form = UserAdminWalletForm(request.POST or None, request.FILES or None, initial=initial)
+    if form.is_valid():
+        if obj.special_wallets.filter(name=form.cleaned_data["name"]).exists():
+            form.add_error("name", f"{obj.email} already has a special wallet for this currency — edit it instead.")
+        else:
+            wallet = form.save(commit=False)
+            wallet.user = obj
+            wallet.save()
+            messages.success(request, f"Special {wallet.get_name_display()} wallet added for {obj.email}.")
+            return redirect("panel:user_wallet_list", pk=obj.pk)
+    return render(request, "panel/users/special_wallet_form.html", {
+        "form": form, "action": "Add", "user_obj": obj, "icon_map": AdminWallet.WALLET_ICON_MAP,
+    })
+
+
+@superuser_required
+def user_wallet_edit(request, pk, wallet_pk):
+    obj    = get_object_or_404(User, pk=pk)
+    wallet = get_object_or_404(UserAdminWallet, pk=wallet_pk, user=obj)
+    form   = UserAdminWalletForm(request.POST or None, request.FILES or None, instance=wallet)
+    if form.is_valid():
+        if obj.special_wallets.filter(name=form.cleaned_data["name"]).exclude(pk=wallet.pk).exists():
+            form.add_error("name", f"{obj.email} already has a special wallet for this currency.")
+        else:
+            form.save()
+            messages.success(request, f"Special {wallet.get_name_display()} wallet updated for {obj.email}.")
+            return redirect("panel:user_wallet_list", pk=obj.pk)
+    return render(request, "panel/users/special_wallet_form.html", {
+        "form": form, "action": "Edit", "user_obj": obj, "obj": wallet, "icon_map": AdminWallet.WALLET_ICON_MAP,
+    })
+
+
+@superuser_required
+def user_wallet_delete(request, pk, wallet_pk):
+    obj    = get_object_or_404(User, pk=pk)
+    wallet = get_object_or_404(UserAdminWallet, pk=wallet_pk, user=obj)
+    if request.method == "POST":
+        label = wallet.get_name_display()
+        wallet.delete()
+        messages.success(request, f"Special {label} wallet removed — {obj.email} now sees the general wallet.")
+        return redirect("panel:user_wallet_list", pk=obj.pk)
+    return render(request, "panel/confirm_delete.html", {
+        "title": "Delete special wallet?",
+        "subtitle": f"{wallet.get_name_display()} — {obj.email}",
+        "warning": "The user will see the general admin wallet for this currency again (if one is active).",
+        "cancel_url": f"/panel/users/{obj.pk}/special-wallets/",
+    })
+
+
+# ── Create Deposit (admin, on a user's behalf) ────────────────────────────────
+
+@superuser_required
+def deposit_create(request):
+    """Same result as the user's deposit modal: a *pending* deposit with the
+    asset, USD amount, units (live rate, 1:1 fallback), optional receipt and
+    the "Deposit Request Received" notification. Then approve it as usual."""
+    from core.deposit_wallets import resolve_deposit_wallet, deposit_units
+    from core.models import DepositIntent
+
+    initial = {}
+    if request.method != "POST" and (request.GET.get("user") or "").isdigit():
+        initial["user"] = request.GET["user"]
+    form = AdminCreateDepositForm(request.POST or None, request.FILES or None, initial=initial)
+    if form.is_valid():
+        user       = form.cleaned_data["user"]
+        amount_usd = form.cleaned_data["amount_usd"]
+        wallet     = resolve_deposit_wallet(user, form.cleaned_data["wallet_id"])
+        if wallet is None:
+            form.add_error("wallet_id", f"That payment method is not active for {user.email}.")
+        else:
+            tx = Transaction.objects.create(
+                user=user,
+                tx_type="deposit",
+                asset=wallet.symbol,
+                units=deposit_units(wallet.symbol, amount_usd),
+                amount_usd=amount_usd,
+                receipt=form.cleaned_data.get("receipt"),
+                status="pending",
+            )
+            Notification.objects.create(
+                user=user,
+                notif_type="wallet",
+                title="Deposit Request Received",
+                body=f"Your deposit of ${amount_usd:,.2f} ({wallet.name}) is under review. You will be notified once it is approved.",
+            )
+            # Same as the user submitting it: an earlier abandoned attempt is
+            # now fulfilled, so don't send them a reminder about it.
+            DepositIntent.objects.filter(user=user, completed_at__isnull=True).update(completed_at=timezone.now())
+            messages.success(request, f"Pending deposit of ${amount_usd:,.2f} ({tx.units:f} {tx.asset}) created for {user.email}. Approve or reject it below.")
+            return redirect("panel:transaction_detail", pk=tx.pk)
+    return render(request, "panel/transactions/create_deposit.html", {"form": form})
+
+
+@superuser_required
+def deposit_create_options(request):
+    """JSON: payment methods (address, live rate) this user sees in their modal."""
+    from core.deposit_wallets import deposit_wallets_for, deposit_rate, wallet_api_id
+
+    obj = get_object_or_404(User, pk=request.GET.get("user") or 0)
+    wallets = []
+    for w in deposit_wallets_for(obj):
+        rate = deposit_rate(w.symbol)
+        wallets.append({
+            "id": wallet_api_id(w),
+            "name_display": w.get_name_display(),
+            "symbol": w.symbol,
+            "network": w.network,
+            "address": w.address,
+            "rate": str(rate) if rate else None,   # None -> 1:1, as in the modal
+            "is_special": isinstance(w, UserAdminWallet),  # admin-only hint
+        })
+    return JsonResponse({"success": True, "wallets": wallets})
 
 # ── Copy Trades ───────────────────────────────────────────────────────────────
 

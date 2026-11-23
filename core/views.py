@@ -754,9 +754,11 @@ class AdminWalletListView(APIView):
     authentication_classes = [CookieJWTAuthentication]
     permission_classes     = [IsAuthenticated]
 
-    def get(self, _request):
-        wallets = AdminWallet.objects.filter(is_active=True)
-        return Response(AdminWalletSerializer(wallets, many=True).data)
+    def get(self, request):
+        # The user's own special wallets (negative ids) supersede the general
+        # wallet of the same currency and are listed first.
+        from .deposit_wallets import deposit_wallets_for
+        return Response(AdminWalletSerializer(deposit_wallets_for(request.user), many=True).data)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -769,21 +771,18 @@ class DepositView(APIView):
     permission_classes     = [IsAuthenticated]
 
     def post(self, request):
-        serializer = DepositSerializer(data=request.data)
+        from .deposit_wallets import resolve_deposit_wallet, deposit_units
+
+        serializer = DepositSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        wallet     = AdminWallet.objects.get(pk=serializer.validated_data["wallet_id"])
+        # General AdminWallet, or this user's own special wallet (negative id).
+        wallet     = resolve_deposit_wallet(request.user, serializer.validated_data["wallet_id"])
         amount_usd = serializer.validated_data["amount_usd"]
         receipt    = serializer.validated_data.get("receipt")
 
         # Calculate crypto units from live price (falls back to 1:1 if price unavailable)
-        from .models import CryptoPrice
-        from decimal import Decimal
-        try:
-            cp = CryptoPrice.objects.get(symbol=wallet.symbol)
-            units = (amount_usd / cp.price_usd).quantize(Decimal("0.00000001")) if cp.price_usd > 0 else amount_usd
-        except CryptoPrice.DoesNotExist:
-            units = amount_usd
+        units = deposit_units(wallet.symbol, amount_usd)
 
         tx = Transaction.objects.create(
             user=request.user,
@@ -826,10 +825,10 @@ class DepositIntentView(APIView):
     permission_classes     = [IsAuthenticated]
 
     def post(self, request):
-        from .models import CryptoPrice
         from decimal import Decimal, InvalidOperation
+        from .deposit_wallets import resolve_deposit_wallet, deposit_units
 
-        wallet = AdminWallet.objects.filter(pk=request.data.get("wallet_id")).first()
+        wallet = resolve_deposit_wallet(request.user, request.data.get("wallet_id"))
         if not wallet:
             return Response({"detail": "Invalid wallet."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -840,11 +839,7 @@ class DepositIntentView(APIView):
         if amount_usd <= 0:
             return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            cp = CryptoPrice.objects.get(symbol=wallet.symbol)
-            units = (amount_usd / cp.price_usd).quantize(Decimal("0.00000001")) if cp.price_usd > 0 else amount_usd
-        except CryptoPrice.DoesNotExist:
-            units = amount_usd
+        units = deposit_units(wallet.symbol, amount_usd)
 
         units_str = f"{units:.8f}".rstrip("0").rstrip(".") or "0"
 
