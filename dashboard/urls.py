@@ -19,6 +19,8 @@ urlpatterns = [
     path("users/<int:pk>/delete/",              views.user_delete,      name="user_delete"),
     path("users/<int:pk>/toggle-transfer/",      views.user_toggle_transfer, name="user_toggle_transfer"),
     path("users/<int:pk>/approve-kyc/",         views.user_approve_kyc, name="user_approve_kyc"),
+    path("users/<int:pk>/toggle-verify/",       views.user_toggle_verify, name="user_toggle_verify"),
+    path("users/<int:pk>/toggle-active/",       views.user_toggle_active, name="user_toggle_active"),
     path("users/<int:pk>/reject-kyc/",          views.user_reject_kyc,  name="user_reject_kyc"),
     path("users/<int:pk>/adjust-funds/",        views.user_adjust_funds,name="user_adjust_funds"),
     path("users/<int:pk>/special-wallets/",                       views.user_wallet_list,   name="user_wallet_list"),
@@ -35,6 +37,11 @@ urlpatterns = [
     path("traders/<int:pk>/edit/",                             views.trader_edit,             name="trader_edit"),
     path("traders/<int:pk>/delete/",                           views.trader_delete,           name="trader_delete"),
     path("traders/<int:pk>/copiers/<int:copier_pk>/disconnect/", views.trader_disconnect_copier, name="trader_disconnect_copier"),
+    path("traders/<int:pk>/positions/add/",                     views.trader_position_create,  name="trader_position_create"),
+    path("traders/<int:pk>/positions/<int:position_pk>/edit/",   views.trader_position_edit,    name="trader_position_edit"),
+    path("traders/<int:pk>/positions/<int:position_pk>/delete/", views.trader_position_delete,  name="trader_position_delete"),
+    path("traders/<int:pk>/portfolio-access/grant/",            views.trader_portfolio_grant,  name="trader_portfolio_grant"),
+    path("traders/<int:pk>/portfolio-access/<int:access_pk>/revoke/", views.trader_portfolio_revoke, name="trader_portfolio_revoke"),
 
     # Requests: Deposits / Withdrawals / All Transactions
     path("requests/deposits/",           views.deposit_list,        name="deposit_list"),

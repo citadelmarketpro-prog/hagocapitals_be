@@ -1,0 +1,64 @@
+{% extends "panel/base.html" %}
+{% block title %}{{ action }} Position — {{ trader.name }} — HagosCapital Admin{% endblock %}
+{% block heading %}{{ action }} Portfolio Position{% endblock %}
+{% block breadcrumb %}<a href="{% url 'panel:trader_list' %}" style="color:#6366f1;">Traders</a> / <a href="{% url 'panel:trader_detail' trader.pk %}" style="color:#6366f1;">{{ trader.name }}</a> / {{ action }} Position{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+  <p class="text-sm mb-4" style="color:#94a3b8;">An open position shown on <strong style="color:#f8fafc;">{{ trader.name }}</strong>'s Portfolio tab. Invested / value are shown to users as shares of the whole portfolio.</p>
+  <div class="panel-card p-6">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.errors %}
+      <div class="mb-4 text-xs" style="color:#f87171;">
+        {% for field, errors in form.errors.items %}{% for e in errors %}<p>{{ field|title }}: {{ e }}</p>{% endfor %}{% endfor %}
+      </div>
+      {% endif %}
+      <div class="grid grid-cols-2 gap-4">
+        <div class="mb-5">
+          <label class="form-label">Ticker *</label>
+          <input type="text" name="market" value="{{ form.market.value|default:'' }}" class="form-control" required placeholder="AAPL" />
+        </div>
+        <div class="mb-5">
+          <label class="form-label">Direction *</label>
+          <select name="direction" class="form-control" required>
+            {% for val, label in form.fields.direction.choices %}{% if val %}<option value="{{ val }}" {% if form.direction.value == val %}selected{% endif %}>{{ label }}</option>{% endif %}{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="mb-5">
+        <label class="form-label">Name</label>
+        <input type="text" name="name" value="{{ form.name.value|default:'' }}" class="form-control" placeholder="Apple Inc." />
+      </div>
+      <div class="mb-5">
+        <label class="form-label">Logo URL</label>
+        <input type="url" name="logo_url" value="{{ form.logo_url.value|default:'' }}" class="form-control" placeholder="Leave blank for the standard ticker logo" />
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="mb-5">
+          <label class="form-label">Invested ($) *</label>
+          <input type="number" name="invested" value="{{ form.invested.value|default:'' }}" class="form-control" step="0.01" required placeholder="5000.00" />
+        </div>
+        <div class="mb-5">
+          <label class="form-label">P/L (%) *</label>
+          <input type="number" name="profit_loss" value="{{ form.profit_loss.value|default:'' }}" class="form-control" step="0.01" required placeholder="12.50" />
+        </div>
+        <div class="mb-5">
+          <label class="form-label">Value ($) *</label>
+          <input type="number" name="value" value="{{ form.value.value|default:'' }}" class="form-control" step="0.01" required placeholder="5625.00" />
+        </div>
+      </div>
+      <div class="mb-6">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="is_active" {% if form.is_active.value %}checked{% endif %} style="accent-color:#6366f1; width:16px; height:16px;" />
+          <span class="text-sm" style="color:#f8fafc;">Open (shown on the Portfolio tab)</span>
+        </label>
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" class="btn btn-primary">{{ action }} Position</button>
+        <a href="{% url 'panel:trader_detail' trader.pk %}" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

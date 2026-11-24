@@ -186,6 +186,25 @@
         </div>
       </div>
 
+      <h3 class="text-xs font-semibold uppercase tracking-widest mb-1 pb-2 border-b mt-4" style="color:#94a3b8; border-color:#263353;">Portfolio Visibility</h3>
+      <p class="text-xs mb-3" style="color:#94a3b8;">Controls the Portfolio tab (open positions) on this trader's page.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
+        <div class="mb-4">
+          <div class="flex items-center gap-2">
+            <input type="checkbox" name="blur_portfolio" id="id_blur_portfolio" {% if form.blur_portfolio.value %}checked{% endif %} style="accent-color:#6366f1; width:16px; height:16px;" />
+            <label class="form-label" for="id_blur_portfolio" style="margin:0;">Blur Portfolio tab</label>
+          </div>
+          <p class="text-xs mt-1" style="color:#94a3b8;">On: users see it blurred until you grant them access (from the trader page). Off: it is always visible.</p>
+          {% for e in form.blur_portfolio.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Blur Portfolio Amount ($)</label>
+          <input type="number" id="id_blur_portfolio_amount" name="blur_portfolio_amount" value="{{ form.blur_portfolio_amount.value|default:'1000000.00' }}" class="form-control" step="0.01" min="0" placeholder="1000000.00" />
+          <p class="text-xs mt-1" style="color:#94a3b8;">Minimum user balance shown as the requirement to view and copy this portfolio.</p>
+          {% for e in form.blur_portfolio_amount.errors %}<p class="text-xs mt-1" style="color:#f87171;">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+
       <div class="flex flex-col sm:flex-row gap-3">
         <button type="submit" class="btn btn-primary justify-center w-full sm:w-auto">{{ action }} Trader</button>
         {% if obj %}

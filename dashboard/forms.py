@@ -14,6 +14,7 @@ from core.models import (
     Signal,
     Trader,
     Transaction,
+    TraderPortfolio,
     UserAdminWallet,
     WalletConnection,
 )
@@ -181,6 +182,7 @@ class TraderForm(forms.ModelForm):
             "total_wins", "total_losses",
             "portfolio_breakdown", "top_traded",
             "performance_data", "monthly_performance", "frequently_traded",
+            "blur_portfolio", "blur_portfolio_amount",
         ]
         widgets = {
             "bio":  forms.Textarea(attrs={"rows": 3}),
@@ -306,6 +308,13 @@ class AdminWalletForm(forms.ModelForm):
         # `icon` is intentionally excluded — it's auto-derived from `name`
         # (see AdminWallet.get_icon_url / WALLET_ICON_MAP), never uploaded.
         fields = ["name", "symbol", "network", "address", "qr_code", "is_active", "order"]
+
+
+class TraderPortfolioForm(forms.ModelForm):
+    """One open position on a trader's Portfolio tab."""
+    class Meta:
+        model  = TraderPortfolio
+        fields = ["market", "name", "logo_url", "direction", "invested", "profit_loss", "value", "is_active"]
 
 
 class UserAdminWalletForm(forms.ModelForm):

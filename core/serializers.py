@@ -363,6 +363,8 @@ class TraderDetailSerializer(TraderSerializer):
             "avg_score_7d", "profitable_weeks_pct", "total_trades_12m",
             "avg_profit_pct", "avg_loss_pct", "total_wins", "total_losses",
             "frequently_traded", "win_rate_pct",
+            # Portfolio tab visibility (positions come from /api/traders/<pk>/portfolio/)
+            "blur_portfolio", "blur_portfolio_amount",
         ]
 
     def get_country_flag_url(self, obj):

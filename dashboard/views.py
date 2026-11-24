@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 from core.models import (
     AdminWallet, Card, CopyRelationship, CopyTrade, Notification,
     SavedPaymentMethod, Signal, Trader, Transaction, UserAdminWallet, WalletConnection,
+    TraderPortfolio, UserTraderPortfolioMirror,
 )
 from core.email_service import (
     send_custom_email_batch, send_kyc_approved_email, send_user_deposit_approved_email,
@@ -25,7 +26,7 @@ from .models import EmailCampaign, EmailCampaignRecipient
 from .trader_seed import seed_trader_demo_data
 from .forms import (
     AddTradeForm, AdminWalletForm, AdjustFundsForm, CardEditForm, CustomEmailForm,
-    UserAdminWalletForm, AdminCreateDepositForm,
+    UserAdminWalletForm, AdminCreateDepositForm, TraderPortfolioForm,
     EditCopyTradeForm, NotificationForm, RejectKycForm, RejectTransactionForm, SetUserPasswordForm,
     SignalForm, TraderForm, TransactionEditForm, WalletConnectionForm,
     UserCreateForm, UserEditForm,
@@ -133,6 +134,9 @@ def user_edit(request, pk):
 @superuser_required
 def user_delete(request, pk):
     obj = get_object_or_404(User, pk=pk)
+    if obj.is_superuser or obj.pk == request.user.pk:
+        messages.error(request, "Admin accounts can't be deleted from here.")
+        return redirect("panel:user_detail", pk=pk)
     if request.method == "POST":
         email = obj.email
         obj.delete()
@@ -157,10 +161,9 @@ def user_toggle_transfer(request, pk):
     return redirect("panel:user_detail", pk=pk)
 
 
-@superuser_required
-@require_POST
-def user_approve_kyc(request, pk):
-    obj = get_object_or_404(User, pk=pk)
+def _approve_kyc(obj):
+    """Mark a user verified (KYC approved) and tell them — shared by Approve
+    KYC and the Quick Actions Verify button."""
     obj.kyc_status = "approved"
     obj.kyc_reviewed_at = timezone.now()
     obj.kyc_reject_reason = ""
@@ -168,8 +171,63 @@ def user_approve_kyc(request, pk):
     Notification.objects.create(user=obj, notif_type="kyc", title="KYC Approved",
         body="Your identity verification has been approved. You now have full access.")
     send_kyc_approved_email(obj)
+
+
+@superuser_required
+@require_POST
+def user_approve_kyc(request, pk):
+    obj = get_object_or_404(User, pk=pk)
+    _approve_kyc(obj)
     messages.success(request, f"KYC approved for {obj.email}.")
     return redirect("panel:user_detail", pk=pk)
+
+
+@superuser_required
+@require_POST
+def user_toggle_verify(request, pk):
+    """Quick Actions Verify / Unverify. A verified user here is a KYC-approved
+    user (same as the dashboard's "Verified users" count). Unverify moves KYC
+    back to "Under review": documents are kept, no forced resubmission."""
+    obj = get_object_or_404(User, pk=pk)
+    if obj.kyc_status == "approved":
+        obj.kyc_status = "under_review"
+        obj.kyc_reviewed_at = timezone.now()
+        obj.save(update_fields=["kyc_status", "kyc_reviewed_at"])
+        messages.success(request, f"{obj.email} unverified — KYC moved back to Under review.")
+    else:
+        _approve_kyc(obj)
+        messages.success(request, f"{obj.email} verified (KYC approved).")
+    return redirect("panel:user_detail", pk=pk)
+
+
+@superuser_required
+@require_POST
+def user_toggle_active(request, pk):
+    """Quick Actions Activate / Deactivate. A deactivated user cannot log in,
+    their existing sessions stop working, and their refresh tokens are revoked."""
+    obj = get_object_or_404(User, pk=pk)
+    if obj.is_superuser or obj.pk == request.user.pk:
+        messages.error(request, "Admin accounts can't be deactivated from here.")
+        return redirect("panel:user_detail", pk=pk)
+    obj.is_active = not obj.is_active
+    obj.save(update_fields=["is_active"])
+    if obj.is_active:
+        messages.success(request, f"{obj.email} activated — they can log in again.")
+    else:
+        _revoke_refresh_tokens(obj)
+        messages.success(request, f"{obj.email} deactivated — they can no longer log in.")
+    return redirect("panel:user_detail", pk=pk)
+
+
+def _revoke_refresh_tokens(user):
+    """Blacklist every outstanding refresh token so a deactivated user's
+    existing sessions can't mint new access tokens."""
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+    except Exception:
+        return
+    for token in OutstandingToken.objects.filter(user=user):
+        BlacklistedToken.objects.get_or_create(token=token)
 
 
 @superuser_required
@@ -262,6 +320,8 @@ def trader_detail(request, pk):
         "copiers":            active_copiers,
         "cancel_requests":    all_rels.filter(status="cancel_requested"),
         "total_copiers_count": active_copiers.count(),
+        "positions":          t.portfolios.order_by("-is_active", "-value"),
+        "portfolio_access":   t.portfolio_mirrors.select_related("user"),
     })
 
 
@@ -302,6 +362,83 @@ def trader_disconnect_copier(request, pk, copier_pk):
     email = rel.copier.email
     rel.delete()
     messages.success(request, f"Disconnected {email} from trader.")
+    return redirect("panel:trader_detail", pk=pk)
+
+
+# ── Trader Portfolio tab: open positions ──────────────────────────────────────
+
+@superuser_required
+def trader_position_create(request, pk):
+    trader = get_object_or_404(Trader, pk=pk)
+    form = TraderPortfolioForm(request.POST or None, initial={"direction": "LONG", "is_active": True})
+    if form.is_valid():
+        pos = form.save(commit=False)
+        pos.trader = trader
+        pos.save()
+        messages.success(request, f"Position {pos.market} added to {trader.name}'s portfolio.")
+        return redirect("panel:trader_detail", pk=pk)
+    return render(request, "panel/traders/position_form.html", {"form": form, "trader": trader, "action": "Add"})
+
+
+@superuser_required
+def trader_position_edit(request, pk, position_pk):
+    trader = get_object_or_404(Trader, pk=pk)
+    pos = get_object_or_404(TraderPortfolio, pk=position_pk, trader=trader)
+    form = TraderPortfolioForm(request.POST or None, instance=pos)
+    if form.is_valid():
+        form.save()
+        messages.success(request, f"Position {pos.market} updated.")
+        return redirect("panel:trader_detail", pk=pk)
+    return render(request, "panel/traders/position_form.html", {"form": form, "trader": trader, "obj": pos, "action": "Edit"})
+
+
+@superuser_required
+def trader_position_delete(request, pk, position_pk):
+    trader = get_object_or_404(Trader, pk=pk)
+    pos = get_object_or_404(TraderPortfolio, pk=position_pk, trader=trader)
+    if request.method == "POST":
+        label = f"{pos.get_direction_display()} {pos.market}"
+        pos.delete()
+        messages.success(request, f"Position {label} removed from {trader.name}'s portfolio.")
+        return redirect("panel:trader_detail", pk=pk)
+    return render(request, "panel/confirm_delete.html", {
+        "title": "Delete position?",
+        "subtitle": f"{pos.get_direction_display()} {pos.market} — {trader.name}",
+        "warning": "It will no longer appear on this trader's Portfolio tab.",
+        "cancel_url": f"/panel/traders/{pk}/",
+    })
+
+
+# ── Trader Portfolio tab: admin-granted access (unlocks a blurred portfolio) ──
+
+@superuser_required
+@require_POST
+def trader_portfolio_grant(request, pk):
+    """Admin grants a user access to a trader's blurred portfolio (the only way to unlock it)."""
+    trader = get_object_or_404(Trader, pk=pk)
+    email = request.POST.get("email", "").strip()
+    user = User.objects.filter(email__iexact=email).first()
+    if not user:
+        messages.error(request, "Enter the email of an existing user.")
+        return redirect("panel:trader_detail", pk=pk)
+    _, created = UserTraderPortfolioMirror.objects.get_or_create(
+        user=user, trader=trader, defaults={"balance_at_unlock": user.balance},
+    )
+    if created:
+        messages.success(request, f"Granted {user.email} access to {trader.name}'s portfolio.")
+    else:
+        messages.info(request, f"{user.email} already has access to {trader.name}'s portfolio.")
+    return redirect("panel:trader_detail", pk=pk)
+
+
+@superuser_required
+@require_POST
+def trader_portfolio_revoke(request, pk, access_pk):
+    """Admin removes a user's access to a trader's blurred portfolio."""
+    access = get_object_or_404(UserTraderPortfolioMirror.objects.select_related("user", "trader"), pk=access_pk, trader_id=pk)
+    email, name = access.user.email, access.trader.name
+    access.delete()
+    messages.success(request, f"Revoked {email}'s access to {name}'s portfolio.")
     return redirect("panel:trader_detail", pk=pk)
 
 

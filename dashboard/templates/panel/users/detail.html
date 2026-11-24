@@ -16,6 +16,32 @@
   <!-- ══════════════════ LEFT SIDEBAR ══════════════════ -->
   <div class="xl:col-span-1 space-y-4">
 
+    <!-- Quick Actions -->
+    <div class="panel-card p-5">
+      <p class="text-[10px] uppercase tracking-wide font-semibold mb-3" style="color:#94a3b8;">Quick Actions</p>
+      <div class="grid grid-cols-2 gap-2">
+        <form method="post" action="{% url 'panel:user_toggle_verify' obj.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="w-full text-xs font-semibold py-2 px-3 rounded transition-colors"
+            style="{% if obj.kyc_status == 'approved' %}background:#2a2310; color:#fbbf24; border:1px solid #4a3d1a;{% else %}background:#0f2a1c; color:#22c55e; border:1px solid #1a4a2e;{% endif %}"
+            title="{% if obj.kyc_status == 'approved' %}Move KYC back to Under review{% else %}Approve KYC and notify the user{% endif %}">
+            {% if obj.kyc_status == 'approved' %}Unverify{% else %}Verify{% endif %}
+          </button>
+        </form>
+        {% if not obj.is_superuser %}
+        <form method="post" action="{% url 'panel:user_toggle_active' obj.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="w-full text-xs font-semibold py-2 px-3 rounded transition-colors"
+            style="{% if obj.is_active %}background:#2a1010; color:#f87171; border:1px solid #4a1a1a;{% else %}background:#0f2a1c; color:#22c55e; border:1px solid #1a4a2e;{% endif %}">
+            {% if obj.is_active %}Deactivate{% else %}Activate{% endif %}
+          </button>
+        </form>
+        <a href="{% url 'panel:user_delete' obj.pk %}" class="col-span-2 text-center text-xs font-semibold py-2 px-3 rounded transition-colors"
+           style="background:#2a1010; color:#f87171; border:1px solid #4a1a1a;">Delete User</a>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Profile card -->
     <div class="panel-card p-5">
 
@@ -159,7 +185,7 @@
       </div>
       <div class="flex gap-2 mt-4 pt-4 border-t" style="border-color:#263353;">
         <a href="{% url 'panel:user_edit' obj.pk %}" class="btn btn-ghost text-xs flex-1 justify-center">Edit</a>
-        <a href="{% url 'panel:user_delete' obj.pk %}" class="btn btn-danger text-xs flex-1 justify-center">Delete</a>
+        {% if not obj.is_superuser %}<a href="{% url 'panel:user_delete' obj.pk %}" class="btn btn-danger text-xs flex-1 justify-center">Delete</a>{% endif %}
       </div>
     </div>
 

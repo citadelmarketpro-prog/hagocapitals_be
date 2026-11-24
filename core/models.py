@@ -3,6 +3,8 @@ import uuid
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 from cloudinary.models import CloudinaryField
 
@@ -369,6 +371,19 @@ class Trader(models.Model):
     monthly_performance = models.JSONField(default=list, blank=True, help_text="Monthly performance percentages as list of {month, percentage}.")
     frequently_traded   = models.JSONField(default=list, blank=True, help_text="List of frequently traded asset tickers.")
 
+    # Portfolio visibility — the trader's Portfolio tab (open positions).
+    blur_portfolio = models.BooleanField(
+        default=True,
+        help_text="If on, this trader's Portfolio tab is blurred for users until an admin grants "
+                  "them access (shown the 'Blur portfolio amount' as the requirement). If off, the "
+                  "portfolio is always visible.",
+    )
+    blur_portfolio_amount = models.DecimalField(
+        max_digits=20, decimal_places=2, default=1000000.00,
+        help_text="Minimum user balance ($) required to view and copy this trader's portfolio "
+                  "(only applies when 'Blur portfolio' is on).",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -385,6 +400,68 @@ class Trader(models.Model):
         if total == 0:
             return 0
         return (self.total_wins / total) * 100
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Trader — open portfolio positions (the trader detail page's Portfolio tab)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TraderPortfolio(models.Model):
+    DIRECTION_CHOICES = [("LONG", "Long"), ("SHORT", "Short")]
+
+    trader      = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name="portfolios",
+                                    help_text="The trader this position belongs to")
+    market      = models.CharField(max_length=100, help_text="Market/Asset ticker. Example: AAPL, EURUSD, BTC")
+    name        = models.CharField(max_length=200, blank=True, default="",
+                                   help_text="Company/asset name shown under the ticker. Example: Apple Inc.")
+    logo_url    = models.URLField(max_length=500, blank=True, default="",
+                                  help_text="Logo image URL. Leave blank to use the standard logo for the ticker.")
+    direction   = models.CharField(max_length=10, choices=DIRECTION_CHOICES, help_text="Trade direction: Long or Short")
+    invested    = models.DecimalField(max_digits=12, decimal_places=2, help_text="Amount invested in this position")
+    profit_loss = models.DecimalField(max_digits=10, decimal_places=2, help_text="Profit/Loss percentage")
+    value       = models.DecimalField(max_digits=12, decimal_places=2, help_text="Current value of the position")
+    opened_at   = models.DateTimeField(auto_now_add=True, help_text="When this position was opened")
+    is_active   = models.BooleanField(default=True, help_text="Is this position still open?")
+
+    class Meta:
+        verbose_name = "Trader Portfolio Position"
+        verbose_name_plural = "Trader Portfolio Positions"
+        ordering = ["-opened_at"]
+
+    def __str__(self):
+        return f"{self.trader.name} - {self.market} ({self.direction})"
+
+
+@receiver(post_save, sender=Trader)
+def generate_portfolio_for_new_trader(sender, instance, created, raw=False, **kwargs):
+    """Give every newly created trader a randomly generated portfolio (placeholder data)."""
+    if not created or raw:
+        return
+    from .portfolio_generator import generate_positions
+    TraderPortfolio.objects.bulk_create(
+        [TraderPortfolio(trader=instance, **p) for p in generate_positions()]
+    )
+
+
+class UserTraderPortfolioMirror(models.Model):
+    """A user an admin has granted access to a trader's blurred portfolio. Persists
+    across refreshes and later balance changes until an admin revokes it."""
+    user   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="portfolio_mirrors",
+                               help_text="User who was granted access to the trader's portfolio")
+    trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name="portfolio_mirrors",
+                               help_text="Trader whose portfolio was unlocked")
+    balance_at_unlock = models.DecimalField(max_digits=20, decimal_places=2, default=0.00,
+                                            help_text="User's balance when access was granted (for reference only)")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("user", "trader")]
+        ordering = ["-created_at"]
+        verbose_name = "Portfolio Access"
+        verbose_name_plural = "Portfolio Access"
+
+    def __str__(self):
+        return f"{self.user} can view {self.trader.name}'s portfolio"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

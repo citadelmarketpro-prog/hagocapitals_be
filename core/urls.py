@@ -38,6 +38,7 @@ from .views import (
     StockSellView,
     StockPositionListView,
     TraderDetailView,
+    TraderPortfolioView,
     TraderListView,
     TraderSimilarListView,
     TransactionListView,
@@ -126,6 +127,7 @@ trader_urlpatterns = [
     path("public/",             PublicTraderListView.as_view(),   name="traders-public"),
     path("<int:pk>/",           TraderDetailView.as_view(),       name="traders-detail"),
     path("<int:pk>/similar/",   TraderSimilarListView.as_view(),  name="traders-similar"),
+    path("<int:pk>/portfolio/", TraderPortfolioView.as_view(),    name="traders-portfolio"),
     path("<int:pk>/copy/",      CopyTraderView.as_view(),         name="traders-copy"),
 ]
 

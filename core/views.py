@@ -236,6 +236,12 @@ class Verify2FALoginView(APIView):
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        if not user.is_active:
+            return Response(
+                {"detail": "This account has been disabled."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         if not user.verification_code or not is_code_valid(user):
             return Response(
                 {"detail": "Verification code has expired. Please log in again."},
@@ -383,6 +389,13 @@ class TokenRefreshView(APIView):
             )
         try:
             refresh  = RefreshToken(raw_refresh)
+            # A deactivated user must not be able to keep their session alive.
+            user = User.objects.filter(pk=refresh.get("user_id")).only("is_active").first()
+            if user is None or not user.is_active:
+                return Response(
+                    {"detail": "This account has been disabled."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
             response = Response({"detail": "Token refreshed."})
             _set_auth_cookies(response, refresh)
             return response
@@ -1081,6 +1094,70 @@ class TraderDetailView(APIView):
         except Trader.DoesNotExist:
             return Response({"detail": "Trader not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(TraderDetailSerializer(trader, context={"request": request}).data)
+
+
+FMP_LOGO_URL = "https://images.financialmodelingprep.com/symbol/{symbol}.png"
+
+
+def _portfolio_positions_payload(trader):
+    """Serialized open positions for a trader's Portfolio tab."""
+    from decimal import Decimal
+    from .models import StockProfile, TraderPortfolio
+
+    positions = list(TraderPortfolio.objects.filter(trader=trader, is_active=True).order_by("-value"))
+    profiles = {p.symbol: p for p in StockProfile.objects.filter(symbol__in=[p.market for p in positions])}
+
+    total_invested = sum((p.invested for p in positions), Decimal("0"))
+    total_value = sum((p.value for p in positions), Decimal("0"))
+
+    def share(part, total):
+        return str((part / total * 100).quantize(Decimal("0.01"))) if total > 0 else "0.00"
+
+    return [
+        {
+            "id": p.id,
+            "market": p.market,
+            "name": p.name or getattr(profiles.get(p.market), "name", ""),
+            "direction": p.direction,
+            "logo_url": p.logo_url or getattr(profiles.get(p.market), "logo_url", "") or FMP_LOGO_URL.format(symbol=p.market),
+            "invested_pct": share(p.invested, total_invested),
+            "profit_loss": str(p.profit_loss),
+            "value_pct": share(p.value, total_value),
+        }
+        for p in positions
+    ]
+
+
+class TraderPortfolioView(APIView):
+    """GET /api/traders/<pk>/portfolio/
+
+    A trader's open portfolio positions, plus a `locked` flag. While the trader
+    has blur_portfolio on, a user only sees the positions once an admin has
+    granted them access (a UserTraderPortfolioMirror row, created from the
+    admin panel). Locked users get no rows — just what the frontend needs to
+    explain the requirement: the required balance, the user's balance, and
+    whether they are copying this trader."""
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes     = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from .models import UserTraderPortfolioMirror
+
+        try:
+            trader = Trader.objects.get(pk=pk)
+        except Trader.DoesNotExist:
+            return Response({"success": False, "detail": "Trader not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user = request.user
+        locked = trader.blur_portfolio and not UserTraderPortfolioMirror.objects.filter(user=user, trader=trader).exists()
+        return Response({
+            "success": True,
+            "locked": locked,
+            "positions": [] if locked else _portfolio_positions_payload(trader),
+            "required_balance": str(trader.blur_portfolio_amount),
+            "balance": str(user.balance),
+            "is_copying": CopyRelationship.objects.filter(copier=user, trader=trader, status="active").exists(),
+        })
 
 
 class CopyTraderView(APIView):

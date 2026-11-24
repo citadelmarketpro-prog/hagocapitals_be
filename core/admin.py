@@ -4,7 +4,7 @@ from .email_service import send_kyc_approved_email
 from .models import (
     AdminWallet, Card, CopyRelationship, DepositIntent, News, Notification,
     Signal, StockPosition, StockTrade, Trader, Transaction, User, CopyTrade, WalletConnection,
-    UserAdminWallet,
+    UserAdminWallet, TraderPortfolio, UserTraderPortfolioMirror,
 )
 
 
@@ -113,12 +113,28 @@ class StockTradeAdmin(admin.ModelAdmin):
 
 # ── Trader admin ────────────────────────────────────────────────────────────
 
+@admin.register(UserTraderPortfolioMirror)
+class UserTraderPortfolioMirrorAdmin(admin.ModelAdmin):
+    list_display  = ("user", "trader", "balance_at_unlock", "created_at")
+    search_fields = ("user__email", "trader__name")
+    list_filter   = ("trader",)
+    raw_id_fields = ("user",)
+
+
+class TraderPortfolioInline(admin.TabularInline):
+    """Open positions shown on the trader's Portfolio tab."""
+    model  = TraderPortfolio
+    extra  = 0
+    fields = ("market", "name", "logo_url", "direction", "invested", "profit_loss", "value", "is_active")
+
+
 @admin.register(Trader)
 class TraderAdmin(admin.ModelAdmin):
     """Field set matches orchard_capitals' Trader model exactly — same
     columns, same JSON-field storage for tags/portfolio/top-traded/etc.
     instead of separate relational tables, so a future raw data copy from
     that project needs no column mapping."""
+    inlines = [TraderPortfolioInline]
     list_display   = ("name", "username", "category", "gain", "copiers", "win_rate", "is_active")
     list_filter    = ("category", "badge", "is_active")
     search_fields  = ("name", "username", "bio")
@@ -160,6 +176,9 @@ class TraderAdmin(admin.ModelAdmin):
             ),
             "description": "Raw JSON — see each field's help text for shape.",
             "classes": ("collapse",),
+        }),
+        ("Portfolio visibility", {
+            "fields": ("blur_portfolio", "blur_portfolio_amount"),
         }),
     )
 

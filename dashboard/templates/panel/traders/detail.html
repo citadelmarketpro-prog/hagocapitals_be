@@ -49,6 +49,16 @@
           <p class="font-bold" style="color:#f8fafc;">${{ obj.min_account_threshold|floatformat:0|intcomma }}</p>
         </div>
         <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Portfolio Blurred</p>
+          <p class="font-bold" style="color:{% if obj.blur_portfolio %}#fbbf24{% else %}#22c55e{% endif %};">{% if obj.blur_portfolio %}On{% else %}Off{% endif %}</p>
+        </div>
+        {% if obj.blur_portfolio %}
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
+          <p class="text-xs" style="color:#94a3b8;">Portfolio Unlock Balance</p>
+          <p class="font-bold" style="color:#f8fafc;">${{ obj.blur_portfolio_amount|floatformat:0|intcomma }}</p>
+        </div>
+        {% endif %}
+        <div class="p-3 rounded-lg text-center" style="background:#131c2e; border:1px solid #263353;">
           <p class="text-xs" style="color:#94a3b8;">Max Drawdown</p>
           <p class="font-bold" style="color:#f87171;">{{ obj.max_drawdown|floatformat:2 }}%</p>
         </div>
@@ -107,6 +117,86 @@
       </div>
       {% else %}
       <div class="empty-state"><p>No copiers yet.</p></div>
+      {% endif %}
+    </div>
+
+    <!-- Portfolio tab: open positions -->
+    <div class="panel-card">
+      <div class="card-header flex items-center justify-between gap-3">
+        <h3>Portfolio Positions ({{ positions|length }})</h3>
+        <a href="{% url 'panel:trader_position_create' obj.pk %}" class="btn btn-primary" style="padding:4px 10px; font-size:11px;">+ Add Position</a>
+      </div>
+      <p class="text-xs px-5 pt-3" style="color:#94a3b8;">
+        Shown on this trader's Portfolio tab.
+        {% if obj.blur_portfolio %}Blurred for users until you grant them access below.{% else %}Visible to every user (blur is off).{% endif %}
+      </p>
+      {% if positions %}
+      <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Position</th><th>Invested</th><th>P/L %</th><th>Value</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for p in positions %}
+        <tr>
+          <td>
+            <span class="font-medium" style="color:#f8fafc;">{{ p.get_direction_display }} {{ p.market }}</span>
+            {% if p.name %}<p class="text-xs" style="color:#94a3b8;">{{ p.name }}</p>{% endif %}
+          </td>
+          <td style="color:#f8fafc;">${{ p.invested|floatformat:2|intcomma }}</td>
+          <td style="color:{% if p.profit_loss >= 0 %}#22c55e{% else %}#f87171{% endif %}; font-weight:600;">{{ p.profit_loss|floatformat:2 }}%</td>
+          <td style="color:#f8fafc;">${{ p.value|floatformat:2|intcomma }}</td>
+          <td>{% if p.is_active %}<span class="badge badge-green">Open</span>{% else %}<span class="badge badge-gray">Closed</span>{% endif %}</td>
+          <td>
+            <div class="flex gap-2">
+              <a href="{% url 'panel:trader_position_edit' obj.pk p.pk %}" class="btn btn-ghost" style="padding:4px 10px; font-size:11px;">Edit</a>
+              <a href="{% url 'panel:trader_position_delete' obj.pk p.pk %}" class="btn btn-danger" style="padding:4px 10px; font-size:11px;">Delete</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><p>No positions yet. <a href="{% url 'panel:trader_position_create' obj.pk %}" style="color:#6366f1;">Add one</a></p></div>
+      {% endif %}
+    </div>
+
+    <!-- Portfolio tab: admin-granted access -->
+    <div class="panel-card">
+      <div class="card-header">
+        <h3>Portfolio Access ({{ portfolio_access|length }})</h3>
+      </div>
+      <p class="text-xs px-5 pt-3" style="color:#94a3b8;">
+        Users you've granted access to this trader's blurred portfolio — the only way to unlock it
+        {% if obj.blur_portfolio %}(requirement shown to users: ${{ obj.blur_portfolio_amount|floatformat:2|intcomma }} balance){% else %}(blur is currently off, so everyone can see it){% endif %}.
+      </p>
+      <form method="post" action="{% url 'panel:trader_portfolio_grant' obj.pk %}" class="px-5 py-3 flex flex-col sm:flex-row gap-2">
+        {% csrf_token %}
+        <input type="email" name="email" required placeholder="user@example.com" class="form-control flex-1" />
+        <button type="submit" class="btn btn-primary justify-center text-xs">Grant access</button>
+      </form>
+      {% if portfolio_access %}
+      <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>User</th><th>Balance at Grant</th><th>Granted</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for a in portfolio_access %}
+        <tr>
+          <td><a href="{% url 'panel:user_detail' a.user.pk %}" class="hover:underline" style="color:#6366f1;">{{ a.user.email }}</a></td>
+          <td style="color:#f8fafc;">${{ a.balance_at_unlock|floatformat:2|intcomma }}</td>
+          <td style="color:#94a3b8; font-size:12px;">{{ a.created_at|date:"M d, Y" }}</td>
+          <td>
+            <form method="post" action="{% url 'panel:trader_portfolio_revoke' obj.pk a.pk %}" onsubmit="return confirm('Revoke {{ a.user.email|escapejs }}\'s access? The portfolio will be blurred for them again.');">
+              {% csrf_token %}<button type="submit" class="btn btn-danger" style="padding:4px 10px; font-size:11px;">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><p>No one has been granted access yet.</p></div>
       {% endif %}
     </div>
 
