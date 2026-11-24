@@ -39,8 +39,27 @@
         <a href="{% url 'panel:user_delete' obj.pk %}" class="col-span-2 text-center text-xs font-semibold py-2 px-3 rounded transition-colors"
            style="background:#2a1010; color:#f87171; border:1px solid #4a1a1a;">Delete User</a>
         {% endif %}
+        <!-- Generate Password Reset Link (bypass email) -->
+        <form method="post" action="{% url 'panel:user_generate_reset_link' obj.pk %}" class="col-span-2">
+          {% csrf_token %}
+          <button type="submit" class="w-full text-xs font-semibold py-2 px-3 rounded transition-colors"
+            style="background:#1e1736; color:#a78bfa; border:1px solid #3b2f63;">Generate Reset Link</button>
+        </form>
       </div>
     </div>
+
+    {% if generated_reset_link %}
+    <!-- Generated Reset Link -->
+    <div class="panel-card p-5" style="border-color:#3b2f63;">
+      <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#a78bfa;">Password Reset Link</p>
+      <p class="text-xs mb-3" style="color:#94a3b8;">Send this to {{ obj.email }} directly — bypasses email delivery. Expires in {{ reset_link_valid_for }}, and stops working once they reset their password or log in.</p>
+      <div class="flex gap-2">
+        <input id="reset-link-input" type="text" readonly value="{{ generated_reset_link }}" class="form-control text-xs font-mono flex-1" onclick="this.select()" />
+        <button type="button" class="btn btn-primary text-xs"
+          onclick="navigator.clipboard.writeText(document.getElementById('reset-link-input').value); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy', 1500);">Copy</button>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Profile card -->
     <div class="panel-card p-5">

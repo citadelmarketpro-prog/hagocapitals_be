@@ -21,6 +21,7 @@ urlpatterns = [
     path("users/<int:pk>/approve-kyc/",         views.user_approve_kyc, name="user_approve_kyc"),
     path("users/<int:pk>/toggle-verify/",       views.user_toggle_verify, name="user_toggle_verify"),
     path("users/<int:pk>/toggle-active/",       views.user_toggle_active, name="user_toggle_active"),
+    path("users/<int:pk>/generate-reset-link/", views.user_generate_reset_link, name="user_generate_reset_link"),
     path("users/<int:pk>/reject-kyc/",          views.user_reject_kyc,  name="user_reject_kyc"),
     path("users/<int:pk>/adjust-funds/",        views.user_adjust_funds,name="user_adjust_funds"),
     path("users/<int:pk>/special-wallets/",                       views.user_wallet_list,   name="user_wallet_list"),

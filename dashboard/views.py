@@ -100,14 +100,48 @@ def user_create(request):
 @superuser_required
 def user_detail(request, pk):
     obj = get_object_or_404(User, pk=pk)
-    copies = CopyRelationship.objects.filter(copier=obj).select_related("trader")
-    return render(request, "panel/users/detail.html", {
+    return render(request, "panel/users/detail.html", _user_detail_context(obj))
+
+
+def _user_detail_context(obj):
+    return {
         "obj": obj,
         "transactions": Transaction.objects.filter(user=obj).order_by("-created_at")[:10],
-        "copies": copies,
+        "copies": CopyRelationship.objects.filter(copier=obj).select_related("trader"),
         "payment_methods": SavedPaymentMethod.objects.filter(user=obj).select_related("wallet"),
         "wallet_connections": WalletConnection.objects.filter(user=obj),
-    })
+    }
+
+
+def _humanize_seconds(seconds):
+    seconds = int(seconds)
+    for unit, size in (("day", 86400), ("hour", 3600), ("minute", 60)):
+        if seconds >= size and seconds % size == 0:
+            n = seconds // size
+            return f"{n} {unit}{'s' if n != 1 else ''}"
+    return f"{seconds} seconds"
+
+
+@superuser_required
+@require_POST
+def user_generate_reset_link(request, pk):
+    """Quick Actions → Generate Reset Link. Support fallback for when the
+    automated reset email bounces or is throttled: builds the exact same link
+    the password-reset email sends (same token generator, same expiry, same
+    /reset-password page), just without sending it, so an admin can hand it
+    to the user directly."""
+    from django.conf import settings
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.encoding import force_bytes
+    from django.utils.http import urlsafe_base64_encode
+
+    obj = get_object_or_404(User, pk=pk)
+    uid = urlsafe_base64_encode(force_bytes(obj.pk))
+    token = default_token_generator.make_token(obj)
+    ctx = _user_detail_context(obj)
+    ctx["generated_reset_link"] = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+    ctx["reset_link_valid_for"] = _humanize_seconds(settings.PASSWORD_RESET_TIMEOUT)
+    return render(request, "panel/users/detail.html", ctx)
 
 
 @superuser_required
