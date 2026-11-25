@@ -1,6 +1,5 @@
-<div>
+<div class="min-w-0">
   <span style="color:#94a3b8; font-size:12px;">{{ label }}</span>
-  <p style="color:{% if value %}#f8fafc{% else %}#475569{% endif %}; margin-top:2px;">
-    {% if value %}{{ value }}{% else %}—{% endif %}
-  </p>
+  {# value kept on one line: pre-line preserves the value's own line breaks (e.g. a multi-line bio) without rendering template whitespace #}
+  <p style="color:{% if value %}#f8fafc{% else %}#475569{% endif %}; margin-top:2px; overflow-wrap:anywhere; white-space:pre-line;">{% if value %}{{ value }}{% else %}—{% endif %}</p>
 </div>

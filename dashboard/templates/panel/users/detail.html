@@ -14,7 +14,7 @@
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
   <!-- ══════════════════ LEFT SIDEBAR ══════════════════ -->
-  <div class="xl:col-span-1 space-y-4">
+  <div class="xl:col-span-1 space-y-4 min-w-0">
 
     <!-- Quick Actions -->
     <div class="panel-card p-5">
@@ -53,8 +53,8 @@
     <div class="panel-card p-5" style="border-color:#3b2f63;">
       <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#a78bfa;">Password Reset Link</p>
       <p class="text-xs mb-3" style="color:#94a3b8;">Send this to {{ obj.email }} directly — bypasses email delivery. Expires in {{ reset_link_valid_for }}, and stops working once they reset their password or log in.</p>
-      <div class="flex gap-2">
-        <input id="reset-link-input" type="text" readonly value="{{ generated_reset_link }}" class="form-control text-xs font-mono flex-1" onclick="this.select()" />
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input id="reset-link-input" type="text" readonly value="{{ generated_reset_link }}" class="form-control text-xs font-mono flex-1 min-w-0" onclick="this.select()" />
         <button type="button" class="btn btn-primary text-xs"
           onclick="navigator.clipboard.writeText(document.getElementById('reset-link-input').value); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy', 1500);">Copy</button>
       </div>
@@ -82,25 +82,25 @@
         </div>
       </div>
 
-      <!-- Financials — 3-up on mobile, stays 3-up -->
-      <div class="grid grid-cols-3 gap-2 mb-4">
-        <div class="rounded p-3" style="background:#131c2e; border:1px solid #263353;">
+      <!-- Financials — stacked on phones, 3-up from small screens -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3 gap-2 mb-4">
+        <div class="rounded p-3 min-w-0" style="background:#131c2e; border:1px solid #263353;">
           <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#94a3b8;">Balance</p>
-          <p class="text-sm font-bold leading-tight" style="color:#22c55e;">${{ obj.balance|floatformat:2|intcomma }}</p>
+          <p class="text-sm font-bold leading-tight break-all" style="color:#22c55e;">${{ obj.balance|floatformat:2|intcomma }}</p>
         </div>
-        <div class="rounded p-3" style="background:#131c2e; border:1px solid #263353;">
+        <div class="rounded p-3 min-w-0" style="background:#131c2e; border:1px solid #263353;">
           <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#94a3b8;">Profit</p>
-          <p class="text-sm font-bold leading-tight" style="color:#6366f1;">${{ obj.roi|floatformat:2|intcomma }}</p>
+          <p class="text-sm font-bold leading-tight break-all" style="color:#6366f1;">${{ obj.roi|floatformat:2|intcomma }}</p>
         </div>
-        <div class="rounded p-3" style="background:#131c2e; border:1px solid #263353;">
+        <div class="rounded p-3 min-w-0" style="background:#131c2e; border:1px solid #263353;">
           <p class="text-[10px] uppercase tracking-wide mb-1" style="color:#94a3b8;">ROI %</p>
-          <p class="text-sm font-bold leading-tight" style="color:#f8fafc;">{{ obj.percentage_roi|floatformat:2 }}%</p>
+          <p class="text-sm font-bold leading-tight break-all" style="color:#f8fafc;">{{ obj.percentage_roi|floatformat:2 }}%</p>
         </div>
       </div>
 
       <!-- Portfolio Target -->
       <div class="rounded p-3 mb-4" style="background:#131c2e; border:1px solid #263353;">
-        <div class="flex items-center justify-between mb-1">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
           <p class="text-[10px] uppercase tracking-wide font-semibold" style="color:#94a3b8;">Portfolio Target</p>
           {% if obj.portfolio_target_visible %}
             <span class="badge badge-green">Visible to user</span>
@@ -115,7 +115,7 @@
       <!-- Loyalty Program -->
       <div class="rounded p-3 mb-4" style="background:#131c2e; border:1px solid #263353;">
         <p class="text-[10px] uppercase tracking-wide font-semibold mb-1" style="color:#94a3b8;">Loyalty Tier</p>
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <p class="text-sm font-bold leading-tight capitalize" style="color:#6366f1;">{{ obj.current_loyalty_status }}</p>
           <p class="text-xs" style="color:#94a3b8;">Next: <span class="capitalize" style="color:#f8fafc;">{{ obj.next_loyalty_status }}</span> at ${{ obj.next_amount_to_upgrade|floatformat:2|intcomma }}</p>
         </div>
@@ -211,7 +211,7 @@
   </div>
 
   <!-- ══════════════════ MAIN CONTENT ══════════════════ -->
-  <div class="xl:col-span-2 space-y-4">
+  <div class="xl:col-span-2 space-y-4 min-w-0">
 
     <!-- Personal Information -->
     <div class="panel-card p-5">
