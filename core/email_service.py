@@ -577,7 +577,7 @@ def send_welcome_email(user) -> bool:
 
                     <p style="margin:0; font-size:13px; color:{_ADMIN_TEXT_MUTED}; text-align:center; line-height:1.7;">
                       Questions? Our support team is available 24/7.<br>
-                      <a href="mailto:{getattr(settings, 'ADMIN_NOTIFICATION_EMAIL', 'support@hagoscapital.com')}" style="color:{_ADMIN_BRAND}; font-weight:600;">Contact Support</a>
+                      <a href="mailto:support@hagoscapital.com" style="color:{_ADMIN_BRAND}; font-weight:600;">Contact Support</a>
                     </p>
 
                   </td>
